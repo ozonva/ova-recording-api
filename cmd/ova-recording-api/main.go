@@ -9,7 +9,7 @@ import (
 func main() {
 	src := []int{1,2,3,4,5}
 	batchSize:= 3
-	fmt.Println("src:", src, "batch size:", batchSize,"batches:", utils.Batch(src, batchSize))
+	fmt.Println("src:", src, "batch size:", batchSize,"batches:", utils.SplitToBatches(src, batchSize))
 
 	srcMap := map[string]int{"one": 1, "two": 2, "three": 3}
 

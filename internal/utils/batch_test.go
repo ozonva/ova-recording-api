@@ -2,56 +2,46 @@ package utils
 
 import (
 	"github.com/stretchr/testify/require"
+	"reflect"
 	"testing"
 )
 
-
-func slicesEqual(a, b []int) bool {
-    if len(a) != len(b) {
-        return false
-    }
-    for i := range a {
-        if a[i] != b[i] {
-            return false
-        }
-    }
-    return true
+type testCaseBatch struct {
+	src []int
+	batchSize int
+	expected [][]int
+	panics bool
 }
 
-func TestSlicesEqual(t *testing.T) {
-	require.True(t, slicesEqual([]int{1,2,3}, []int{1,2,3}))
-	require.False(t, slicesEqual([]int{1,2,3}, []int{3,2,1}))
-	require.False(t, slicesEqual([]int{1,2,3}, []int{1,2,3,4}))
-	require.True(t, slicesEqual([]int{}, []int{}))
+func doTestBatch(t *testing.T, currTestCase*testCaseBatch) {
+	if currTestCase.panics {
+		require.Panics(t, func() {SplitToBatches(currTestCase.src, currTestCase.batchSize)})
+		return
+	}
+	batches := SplitToBatches(currTestCase.src, currTestCase.batchSize)
+	t.Logf("Expected: %v, actual: %v", currTestCase.expected, batches)
+
+	if len(currTestCase.expected) != len(batches) {
+		t.Fatalf("Batches count %d != %d", len(batches), len(currTestCase.expected))
+	}
+
+	if !reflect.DeepEqual(currTestCase.expected, batches) {
+		t.Fatal("Result batches are not as expected")
+	}
 }
 
-func TestBatchSimple(t *testing.T) {
 
-	src := []int{1,2,3,4,5,6}
+func TestSplitToBatches(t *testing.T) {
 
-	batches := Batch(src, 3)
+	testCases := map[string]testCaseBatch{
+		"exact division": {src: []int{1,2,3,4,5,6}, batchSize: 3,  expected: [][]int{{1, 2, 3}, {4, 5, 6}}},
+		"with remainder": {src: []int{1,2,3,4},     batchSize: 3,  expected: [][]int{{1, 2, 3}, {4}}},
+		"single batch":   {src: []int{1,2,3,4},     batchSize: 10, expected: [][]int{{1, 2, 3, 4}}},
+		"nil input":      {src: nil,                batchSize: 10, expected: [][]int{}},
+		"panic if negative batch size": {src: []int{1,2}, batchSize: -2, panics: true},
+	}
 
-	require.Equal(t, 2, len(batches))
-	require.True(t, slicesEqual(batches[0], []int{1,2,3}))
-	require.True(t, slicesEqual(batches[1], []int{4,5,6}))
-
-	src = []int{1,2,3,4}
-
-	batches = Batch(src, 3)
-
-	require.Equal(t, 2, len(batches))
-	require.True(t, slicesEqual(batches[0], []int{1,2,3}))
-	require.True(t, slicesEqual(batches[1], []int{4}))
-
-	src = []int{1,2,3,4}
-
-	batches = Batch(src, 10)
-
-	require.Equal(t, 1, len(batches))
-	require.True(t, slicesEqual(batches[0], src))
-}
-
-func TestBatchEdge(t *testing.T) {
-	require.Panics(t, func() { Batch([]int{1,2,3}, -2)})
-	require.Equal(t, 0, len(Batch(nil, 10)))
+	for name, currTest := range testCases {
+		t.Run(name, func(t *testing.T){ doTestBatch(t, &currTest) })
+	}
 }

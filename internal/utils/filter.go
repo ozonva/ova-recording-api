@@ -1,15 +1,18 @@
 package utils
 
-import "sort"
+var itemsToFilter = []int{1, 2, 3}
+
 
 func contains(value int, array []int) bool {
-	i := sort.SearchInts(array, value)
-	return i < len(array) && array[i] == value
+	for _, element := range array {
+		if element == value {
+			return true
+		}
+	}
+	return false
 }
 
-func Filter(input []int) []int {
-
-	itemsToFilter := []int{1, 2, 3}
+func FilterBy(input []int) []int {
 
 	out := make([]int, 0)
 	for _, element := range input {

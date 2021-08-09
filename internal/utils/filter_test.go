@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/stretchr/testify/require"
+	"reflect"
 	"testing"
 )
 
@@ -13,8 +14,8 @@ func TestContains(t *testing.T) {
 }
 
 func TestFilter(t *testing.T) {
-	require.True(t, slicesEqual(Filter([]int{1,2,3,4,5,6}), []int{1,2,3}))
-	require.True(t, slicesEqual(Filter([]int{3,1,5,2,4,3,4,5,6}), []int{3,1,2,3}))
-	require.True(t, slicesEqual(Filter([]int{4,5,6}), []int{}))
-	require.True(t, slicesEqual(Filter([]int{}), []int{}))
+	require.True(t, reflect.DeepEqual(FilterBy([]int{1,2,3,4,5,6}), []int{1,2,3}))
+	require.True(t, reflect.DeepEqual(FilterBy([]int{3,1,5,2,4,3,4,5,6}), []int{3,1,2,3}))
+	require.True(t, reflect.DeepEqual(FilterBy([]int{4,5,6}), []int{}))
+	require.True(t, reflect.DeepEqual(FilterBy([]int{}), []int{}))
 }
