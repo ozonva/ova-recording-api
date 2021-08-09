@@ -15,14 +15,14 @@ func TestContains(t *testing.T) {
 }
 
 type testCaseFilter struct {
-	src []int
-	targets []int
+	src      []int
+	target   []int
 	expected []int
 }
 
 func doTestFilter(t *testing.T, currTestCase* testCaseFilter) {
 
-	result := FilterBy(currTestCase.src, currTestCase.targets)
+	result := FilterBy(currTestCase.src, currTestCase.target)
 	t.Logf("Expected: %v, actual: %v", currTestCase.expected, result)
 
 	if len(currTestCase.expected) != len(result) {
@@ -39,12 +39,12 @@ func TestFilter(t *testing.T) {
 	simpleFilterTarget := []int{1,2,3}
 
 	testCases := map[string]testCaseFilter{
-		"simple":             {src:[]int{1,2,3,4,5,6},       targets: simpleFilterTarget, expected: []int{1,2,3}},
-		"unsorted and mixed": {src:[]int{3,1,5,2,4,3,4,5,6}, targets: simpleFilterTarget, expected: []int{3,1,2,3}},
-		"none matched":       {src:[]int{4,5,6},             targets: simpleFilterTarget, expected: []int{}},
-		"empty input":        {src:[]int{},                  targets: simpleFilterTarget, expected: []int{}},
-		"empty target":       {src:[]int{1,2,3},             targets: []int{},            expected: []int{}},
-		"nil arguments":      {src:nil,                      targets: nil,                expected: []int{}},
+		"simple":             {src:[]int{1,2,3,4,5,6},       target: simpleFilterTarget, expected: []int{1,2,3}},
+		"unsorted and mixed": {src:[]int{3,1,5,2,4,3,4,5,6}, target: simpleFilterTarget, expected: []int{3,1,2,3}},
+		"none matched":       {src:[]int{4,5,6},             target: simpleFilterTarget, expected: []int{}},
+		"empty input":        {src:[]int{},                  target: simpleFilterTarget, expected: []int{}},
+		"empty target":       {src:[]int{1,2,3},             target: []int{},            expected: []int{}},
+		"nil arguments":      {src:nil,                      target: nil,                expected: []int{}},
 	}
 
 	for name, currTest := range testCases {
