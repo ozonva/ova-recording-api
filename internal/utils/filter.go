@@ -1,7 +1,5 @@
 package utils
 
-var itemsToFilter = []int{1, 2, 3}
-
 
 func contains(value int, array []int) bool {
 	for _, element := range array {
@@ -12,11 +10,11 @@ func contains(value int, array []int) bool {
 	return false
 }
 
-func FilterBy(input []int) []int {
+func FilterBy(input []int, targetItems []int) []int {
 
 	out := make([]int, 0)
 	for _, element := range input {
-		if contains(element, itemsToFilter) {
+		if contains(element, targetItems) {
 			out = append(out, element)
 		}
 	}

@@ -14,6 +14,7 @@ type testCaseBatch struct {
 }
 
 func doTestBatch(t *testing.T, currTestCase*testCaseBatch) {
+
 	if currTestCase.panics {
 		require.Panics(t, func() {SplitToBatches(currTestCase.src, currTestCase.batchSize)})
 		return
@@ -22,7 +23,7 @@ func doTestBatch(t *testing.T, currTestCase*testCaseBatch) {
 	t.Logf("Expected: %v, actual: %v", currTestCase.expected, batches)
 
 	if len(currTestCase.expected) != len(batches) {
-		t.Fatalf("Batches count %d != %d", len(batches), len(currTestCase.expected))
+		t.Fatalf("Result size %d != %d", len(batches), len(currTestCase.expected))
 	}
 
 	if !reflect.DeepEqual(currTestCase.expected, batches) {

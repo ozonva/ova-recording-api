@@ -11,11 +11,43 @@ func TestContains(t *testing.T) {
 	require.True(t, contains(2, []int{1,2,3}))
 	require.False(t, contains(5, []int{1,2,3}))
 	require.False(t, contains(5, []int{1,2,3,6,10}))
+	require.False(t, contains(1, nil))
+}
+
+type testCaseFilter struct {
+	src []int
+	targets []int
+	expected []int
+}
+
+func doTestFilter(t *testing.T, currTestCase* testCaseFilter) {
+
+	result := FilterBy(currTestCase.src, currTestCase.targets)
+	t.Logf("Expected: %v, actual: %v", currTestCase.expected, result)
+
+	if len(currTestCase.expected) != len(result) {
+		t.Fatalf("Result size %d != %d", len(result), len(currTestCase.expected))
+	}
+
+	if !reflect.DeepEqual(currTestCase.expected, result) {
+		t.Fatal("Result of the reversion is not as expected")
+	}
 }
 
 func TestFilter(t *testing.T) {
-	require.True(t, reflect.DeepEqual(FilterBy([]int{1,2,3,4,5,6}), []int{1,2,3}))
-	require.True(t, reflect.DeepEqual(FilterBy([]int{3,1,5,2,4,3,4,5,6}), []int{3,1,2,3}))
-	require.True(t, reflect.DeepEqual(FilterBy([]int{4,5,6}), []int{}))
-	require.True(t, reflect.DeepEqual(FilterBy([]int{}), []int{}))
+
+	simpleFilterTarget := []int{1,2,3}
+
+	testCases := map[string]testCaseFilter{
+		"simple":             {src:[]int{1,2,3,4,5,6},       targets: simpleFilterTarget, expected: []int{1,2,3}},
+		"unsorted and mixed": {src:[]int{3,1,5,2,4,3,4,5,6}, targets: simpleFilterTarget, expected: []int{3,1,2,3}},
+		"none matched":       {src:[]int{4,5,6},             targets: simpleFilterTarget, expected: []int{}},
+		"empty input":        {src:[]int{},                  targets: simpleFilterTarget, expected: []int{}},
+		"empty target":       {src:[]int{1,2,3},             targets: []int{},            expected: []int{}},
+		"nil arguments":      {src:nil,                      targets: nil,                expected: []int{}},
+	}
+
+	for name, currTest := range testCases {
+		t.Run(name, func(t *testing.T){ doTestFilter(t, &currTest) })
+	}
 }

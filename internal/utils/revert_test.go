@@ -13,6 +13,7 @@ type testCaseRevert struct {
 }
 
 func doTestRevert(t *testing.T, currTestCase* testCaseRevert) {
+
 	if currTestCase.panics {
 		require.Panics(t, func() {Revert(currTestCase.src)})
 		return
@@ -22,7 +23,7 @@ func doTestRevert(t *testing.T, currTestCase* testCaseRevert) {
 	t.Logf("Expected: %v, actual: %v", currTestCase.expected, reverse)
 
 	if len(currTestCase.expected) != len(reverse) {
-		t.Fatalf("Map size %d != %d", len(reverse), len(currTestCase.expected))
+		t.Fatalf("Result size %d != %d", len(reverse), len(currTestCase.expected))
 	}
 
 	if !reflect.DeepEqual(currTestCase.expected, reverse) {
