@@ -2,16 +2,16 @@ package utils
 
 
 func SplitToBatches(input []int, batchSize int) [][]int {
+	if batchSize <= 0 {
+		panic("batchSize must be greater than zero")
+	}
+
 	numBatches := len(input) / batchSize
 	if numBatches * batchSize < len(input) {
 		numBatches++
 	}
 	out := make([][]int, numBatches)
 	var currSlice []int
-
-	if batchSize <= 0 {
-		panic("batchSize must be greater than zero")
-	}
 
 	batchIdx := 0
 	for _, element := range input {
