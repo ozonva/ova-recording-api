@@ -1,16 +1,20 @@
 package utils
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
-func Revert(input map[string]int) map[int]string{
+func Revert(input map[string]int) (map[int]string, error){
 
 	out := make(map[int]string)
 	for key, value := range input {
 		if v, ok := out[value]; ok {
-			panic(fmt.Sprintf("Duplicate value in map. Key = %s, Value = %d. Duplicate has key: %s", key, value, v))
+			format := "Duplicate value in map. Key = %s, Value = %d. Duplicate has key: %s"
+			return nil, errors.New(fmt.Sprintf(format, key, value, v))
 		}
 		out[value] = key
 	}
 
-	return out
+	return out, nil
 }

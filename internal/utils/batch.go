@@ -1,33 +1,39 @@
 package utils
 
+import (
+	"errors"
+)
 
-func SplitToBatches(input []int, batchSize int) [][]int {
+// This sucks
+func min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
+}
+
+func SplitToBatches(input []int, batchSize int) ([][]int, error) {
 	if batchSize <= 0 {
-		panic("batchSize must be greater than zero")
+		return nil, errors.New("batchSize must be greater than zero")
 	}
 
 	numBatches := len(input) / batchSize
 	if numBatches * batchSize < len(input) {
 		numBatches++
 	}
+
 	out := make([][]int, numBatches)
-	var currSlice []int
 
+	batchStartIdx := 0
 	batchIdx := 0
-	for _, element := range input {
-
-		if len(currSlice) < batchSize {
-			currSlice = append(currSlice, element)
-		} else {
-			out[batchIdx] = currSlice
-			batchIdx++
-			currSlice = []int{element}
-		}
+	for batchStartIdx < len(input) {
+		numLeft := min(len(input)-batchStartIdx, batchSize)
+		currBatch := make([]int, numLeft)
+		copy(currBatch, input[batchStartIdx:batchStartIdx+numLeft])
+		batchStartIdx += numLeft
+		out[batchIdx] = currBatch
+		batchIdx++
 	}
 
-	if len(currSlice) > 0 {
-		out[batchIdx] = currSlice
-	}
-
-	return out
+	return out, nil
 }
