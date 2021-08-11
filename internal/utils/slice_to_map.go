@@ -6,7 +6,7 @@ import (
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 )
 
-func AppoinmentsSliceToMap(appointments []recording.Appointment) (map[uint64]recording.Appointment, error) {
+func AppointmentsSliceToMap(appointments []recording.Appointment) (map[uint64]recording.Appointment, error) {
 	out := make(map[uint64]recording.Appointment)
 
 	for _, app := range appointments {

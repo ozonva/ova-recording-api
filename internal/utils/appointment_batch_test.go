@@ -10,21 +10,22 @@ import (
 
 type testCaseBatchAppointment struct {
 	src []recording.Appointment
-	batchSize uint
+	batchSize int
 	expected [][]recording.Appointment
-	hasError bool
+	expectingError bool
 }
 
 func doTestBatchAppointment(t *testing.T, currTestCase *testCaseBatchAppointment) {
 
 	batches, err := SplitAppointmentsToBatches(currTestCase.src, currTestCase.batchSize)
-	//t.Logf("Expected: %v, actual: %v", currTestCase.expected, batches)
 
-	if currTestCase.hasError && err == nil {
+	if err != nil {
+		if  !currTestCase.expectingError {
+			t.Fatalf("Got unexpected error %s", err)
+		}
+		return
+	} else if currTestCase.expectingError {
 		t.Fatalf("Expected error, but got nil")
-	}
-	if !currTestCase.hasError && err != nil {
-		t.Fatalf("Got unexpected error: %s", err)
 	}
 
 	if len(currTestCase.expected) != len(batches) {
@@ -57,7 +58,7 @@ func TestSplitAppointmentsToBatchesToBatches(t *testing.T) {
 		"with remainder": {src: appointments[:4],     batchSize: 3,  expected: [][]recording.Appointment{appointments[0:3], appointments[3:4]}},
 		"single batch":   {src: appointments,     batchSize: 10, expected: [][]recording.Appointment{appointments}},
 		"nil input":      {src: nil,                batchSize: 10, expected: [][]recording.Appointment{}},
-		"error if zero batch size": {src: appointments, batchSize: 0, hasError: true},
+		"error if zero batch size": {src: appointments, batchSize: 0, expectingError: true},
 	}
 
 	for name, currTest := range testCases {

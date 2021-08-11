@@ -10,18 +10,20 @@ import (
 type testCaseSplitAppointments struct {
 	src []recording.Appointment
 	expected map[uint64]recording.Appointment
-	hasError bool
+	expectingError bool
 }
 
 func doTestSplitAppointments(t *testing.T, currTestCase *testCaseSplitAppointments) {
 
-	result, err := AppoinmentsSliceToMap(currTestCase.src)
+	result, err := AppointmentsSliceToMap(currTestCase.src)
 
-	if currTestCase.hasError && err == nil {
+	if err != nil {
+		if  !currTestCase.expectingError {
+			t.Fatalf("Got unexpected error %s", err)
+		}
+		return
+	} else if currTestCase.expectingError {
 		t.Fatalf("Expected error, but got nil")
-	}
-	if !currTestCase.hasError && err != nil {
-		t.Fatalf("Got unexpected error: %s", err)
 	}
 
 	if len(currTestCase.expected) != len(result) {
@@ -34,7 +36,7 @@ func doTestSplitAppointments(t *testing.T, currTestCase *testCaseSplitAppointmen
 }
 
 
-func TestAppoinmentsSliceToMap(t *testing.T) {
+func TestAppointmentsSliceToMap(t *testing.T) {
 
 	appointments := make([]recording.Appointment, 2)
 	for i := range appointments {
@@ -48,7 +50,7 @@ func TestAppoinmentsSliceToMap(t *testing.T) {
 	testCases := map[string]testCaseSplitAppointments{
 		"basic": {src: appointments, expected: map[uint64]recording.Appointment{1: appointments[0], 2: appointments[1]}},
 		"nil input": {src: nil,                expected: map[uint64]recording.Appointment{}},
-		"error if has duplicates": {src: []recording.Appointment{appointments[0], appointments[0]}, hasError: true},
+		"error if has duplicates": {src: []recording.Appointment{appointments[0], appointments[0]}, expectingError: true},
 	}
 
 	for name, currTest := range testCases {

@@ -27,9 +27,7 @@ func doTestBatch(t *testing.T, currTestCase*testCaseBatch) {
 			t.Fatalf("Got unexpected error %s", err)
 		}
 		return
-	}
-
-	if err == nil && currTestCase.expectingError {
+	} else if currTestCase.expectingError {
 		t.Fatalf("Expected error, but got nil")
 	}
 
