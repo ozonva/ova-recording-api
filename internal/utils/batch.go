@@ -17,10 +17,7 @@ func SplitToBatches(input []int, batchSize int) ([][]int, error) {
 		return nil, errors.New("batchSize must be greater than zero")
 	}
 
-	numBatches := len(input) / batchSize
-	if numBatches * batchSize < len(input) {
-		numBatches++
-	}
+	numBatches := (len(input) + batchSize - 1) / batchSize
 
 	out := make([][]int, numBatches)
 
