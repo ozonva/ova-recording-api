@@ -6,7 +6,6 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/ozonva/ova-recording-api/internal/flusher"
 	"github.com/ozonva/ova-recording-api/internal/repo"
-	repo_mock "github.com/ozonva/ova-recording-api/internal/repo/mock"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 )
 
@@ -20,7 +19,7 @@ var _ = Describe("Flusher", func() {
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-		someRepo = repo_mock.NewMockRepo(ctrl)
+		someRepo = repo.NewDummyRepo()
 		someFlusher = flusher.NewFlusher(2, someRepo)
 		entities = []recording.Appointment{
 			{
@@ -54,7 +53,7 @@ var _ = Describe("Flusher", func() {
 		Context("Hmm", func() {
 			It("should flush all", func() {
 				_, err := someFlusher.Flush(entities)
-				gomega.Expect(err).To(gomega.Equal(nil))
+				gomega.Expect(err).To(gomega.BeNil())
 			})
 		})
 	})
