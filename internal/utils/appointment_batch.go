@@ -8,10 +8,7 @@ func SplitAppointmentsToBatches(input []recording.Appointment, batchSize int) ([
 		return nil, errors.New("batchSize must be greater than zero")
 	}
 
-	numBatches := len(input) / batchSize
-	if numBatches * batchSize < len(input) {
-		numBatches++
-	}
+	numBatches := (len(input) + batchSize - 1) / batchSize
 
 	out := make([][]recording.Appointment, numBatches)
 
