@@ -41,7 +41,7 @@ func (s* saver) Save(entity recording.Appointment) {
 	defer s.m.Unlock()
 
 	if len(s.entities) == cap(s.entities) {
-		s.flush()
+		s.doFlush()
 	}
 
 	s.entities = append(s.entities, entity)
@@ -54,15 +54,19 @@ func (s* saver) Close() {
 	s.flush()
 }
 
-func (s *saver) flush() {
-	s.m.Lock()
-	defer s.m.Unlock()
-
+func (s* saver) doFlush() {
 	fmt.Println("Going to flush", len(s.entities), "entities")
 
 	s.fl.Flush(s.entities)
 
 	s.entities = s.entities[:0]
+}
+
+func (s *saver) flush() {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	s.doFlush()
 }
 
 func (s *saver) init() {
