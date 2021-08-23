@@ -54,9 +54,11 @@ var _ = Describe("Flusher", func() {
 			It("should flush all", func() {
 				someRepo.EXPECT().AddEntities(entities[:2]).Return(nil).Times(1)
 				someRepo.EXPECT().AddEntities(entities[2:]).Return(nil).Times(1)
+
+				unhandled := someFlusher.Flush(entities)
+				gomega.Expect(unhandled).To(gomega.BeNil())
+
 				someRepo.EXPECT().GetAddedCount().Return(4).Times(1)
-				_, err := someFlusher.Flush(entities)
-				gomega.Expect(err).To(gomega.BeNil())
 				someRepo.GetAddedCount()
 			})
 		})

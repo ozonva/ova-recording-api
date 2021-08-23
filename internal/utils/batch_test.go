@@ -13,6 +13,7 @@ func TestMin(t *testing.T) {
 }
 
 type testCaseBatch struct {
+	name string
 	src []int
 	batchSize int
 	expected [][]int
@@ -45,17 +46,17 @@ func doTestBatch(t *testing.T, currTestCase*testCaseBatch) {
 
 func TestSplitToBatches(t *testing.T) {
 
-	testCases := map[string]testCaseBatch{
-		"exact division": {src: []int{1,2,3,4,5,6}, batchSize: 3,  expected: [][]int{{1, 2, 3}, {4, 5, 6}}},
-		"with remainder": {src: []int{1,2,3,4},     batchSize: 3,  expected: [][]int{{1, 2, 3}, {4}}},
-		"single batch":   {src: []int{1,2,3,4},     batchSize: 10, expected: [][]int{{1, 2, 3, 4}}},
-		"nil input":      {src: nil,                batchSize: 10, expected: [][]int{}},
-		"batch size == 1":{src: []int{1,2,3,4},     batchSize: 1,  expected: [][]int{{1}, {2}, {3}, {4}}},
-		"error if negative batch size": {src: []int{1,2}, batchSize: -2, expectingError: true},
-		"error if zero batch size": {src: []int{1,2}, batchSize: 0, expectingError: true},
+	testCases := []testCaseBatch{
+		{name: "exact division", src: []int{1,2,3,4,5,6}, batchSize: 3,  expected: [][]int{{1, 2, 3}, {4, 5, 6}}},
+		{name: "with remainder", src: []int{1,2,3,4},     batchSize: 3,  expected: [][]int{{1, 2, 3}, {4}}},
+		{name: "single batch", src: []int{1,2,3,4},     batchSize: 10, expected: [][]int{{1, 2, 3, 4}}},
+		{name: "nil input", src: nil,                batchSize: 10, expected: [][]int{}},
+		{name: "batch size == 1", src: []int{1,2,3,4},     batchSize: 1,  expected: [][]int{{1}, {2}, {3}, {4}}},
+		{name: "error if negative batch size", src: []int{1,2}, batchSize: -2, expectingError: true},
+		{name: "error if zero batch size", src: []int{1,2}, batchSize: 0, expectingError: true},
 	}
 
-	for name, currTest := range testCases {
-		t.Run(name, func(t *testing.T){ doTestBatch(t, &currTest) })
+	for _, currTest := range testCases {
+		t.Run(currTest.name, func(t *testing.T){ doTestBatch(t, &currTest) })
 	}
 }
