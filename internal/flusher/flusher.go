@@ -1,13 +1,14 @@
 package flusher
 
 import (
+	"fmt"
 	"github.com/ozonva/ova-recording-api/internal/repo"
 	"github.com/ozonva/ova-recording-api/internal/utils"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 )
 
 type Flusher interface {
-	Flush(entities []recording.Appointment) ([]recording.Appointment, error)
+	Flush(entities []recording.Appointment) ([]recording.Appointment)
 }
 
 func NewFlusher(
@@ -25,11 +26,17 @@ type flusher struct {
 	entityRepo  repo.Repo
 }
 
-func (f *flusher) Flush (entities []recording.Appointment) ([]recording.Appointment, error) {
+func (f *flusher) Flush (entities []recording.Appointment) []recording.Appointment {
+
+	if entities == nil {
+		fmt.Println("Nil input")
+		return entities
+	}
 
 	batches, err := utils.SplitAppointmentsToBatches(entities, f.chunkSize)
 	if err != nil {
-		return entities, err
+		fmt.Printf("Cannot split entities to batches: %s\n", err)
+		return entities
 	}
 
 	currIndex := 0
@@ -37,10 +44,11 @@ func (f *flusher) Flush (entities []recording.Appointment) ([]recording.Appointm
 	for _, batch := range batches {
 		err = f.entityRepo.AddEntities(batch)
 		if err != nil {
-			return entities[currIndex:], err
+			fmt.Printf("Cannot save to repo: %s\n", err)
+			return entities[currIndex:]
 		}
 		currIndex += len(batch)
 	}
 
-	return nil, nil
+	return nil
 }
