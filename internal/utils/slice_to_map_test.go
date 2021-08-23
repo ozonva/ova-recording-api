@@ -8,6 +8,7 @@ import (
 )
 
 type testCaseSplitAppointments struct {
+	name string
 	src []recording.Appointment
 	expected map[uint64]recording.Appointment
 	expectingError bool
@@ -47,13 +48,13 @@ func TestAppointmentsSliceToMap(t *testing.T) {
 		}
 	}
 
-	testCases := map[string]testCaseSplitAppointments{
-		"basic": {src: appointments, expected: map[uint64]recording.Appointment{1: appointments[0], 2: appointments[1]}},
-		"nil input": {src: nil,                expected: map[uint64]recording.Appointment{}},
-		"error if has duplicates": {src: []recording.Appointment{appointments[0], appointments[0]}, expectingError: true},
+	testCases := []testCaseSplitAppointments{
+		{name: "basic", src: appointments, expected: map[uint64]recording.Appointment{1: appointments[0], 2: appointments[1]}},
+		{name: "nil input", src: nil,                expected: map[uint64]recording.Appointment{}},
+		{name: "error if has duplicates", src: []recording.Appointment{appointments[0], appointments[0]}, expectingError: true},
 	}
 
-	for name, currTest := range testCases {
-		t.Run(name, func(t *testing.T){ doTestSplitAppointments(t, &currTest) })
+	for _, currTest := range testCases {
+		t.Run(currTest.name, func(t *testing.T){ doTestSplitAppointments(t, &currTest) })
 	}
 }

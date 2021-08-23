@@ -9,6 +9,7 @@ import (
 )
 
 type testCaseBatchAppointment struct {
+	name string
 	src []recording.Appointment
 	batchSize int
 	expected [][]recording.Appointment
@@ -53,15 +54,15 @@ func TestSplitAppointmentsToBatchesToBatches(t *testing.T) {
 		}
 	}
 
-	testCases := map[string]testCaseBatchAppointment{
-		"exact division": {src: appointments, batchSize: 3,  expected: [][]recording.Appointment{appointments[0:3], appointments[3:]}},
-		"with remainder": {src: appointments[:4],     batchSize: 3,  expected: [][]recording.Appointment{appointments[0:3], appointments[3:4]}},
-		"single batch":   {src: appointments,     batchSize: 10, expected: [][]recording.Appointment{appointments}},
-		"nil input":      {src: nil,                batchSize: 10, expected: [][]recording.Appointment{}},
-		"error if zero batch size": {src: appointments, batchSize: 0, expectingError: true},
+	testCases := []testCaseBatchAppointment{
+		{name: "exact division", src: appointments, batchSize: 3,  expected: [][]recording.Appointment{appointments[0:3], appointments[3:]}},
+		{name: "with remainder", src: appointments[:4],     batchSize: 3,  expected: [][]recording.Appointment{appointments[0:3], appointments[3:4]}},
+		{name: "single batch", src: appointments,     batchSize: 10, expected: [][]recording.Appointment{appointments}},
+		{name: "nil input", src: nil,                batchSize: 10, expected: [][]recording.Appointment{}},
+		{name: "error if zero batch size", src: appointments, batchSize: 0, expectingError: true},
 	}
 
-	for name, currTest := range testCases {
-		t.Run(name, func(t *testing.T){ doTestBatchAppointment(t, &currTest) })
+	for _, currTest := range testCases {
+		t.Run(currTest.name, func(t *testing.T){ doTestBatchAppointment(t, &currTest) })
 	}
 }
