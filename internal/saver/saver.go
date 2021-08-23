@@ -2,28 +2,31 @@ package saver
 
 import (
 	"fmt"
-	"github.com/ozonva/ova-recording-api/internal/flusher"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 	"sync"
 	"time"
 )
 
 
+type Flusher interface {
+	Flush(entities []recording.Appointment) ([]recording.Appointment, error)
+}
+
 type Saver interface {
-	Save(entity recording.Appointment)
+	Save(entity recording.Appointment) error
 	Close()
 }
 
 
 type saver struct {
 	entities []recording.Appointment
-	fl flusher.Flusher
+	fl Flusher
 	m sync.Mutex
-	saveInterval int
+	saveInterval time.Duration
 	doneCh chan bool
 }
 
-func NewSaver(capacity int, fl flusher.Flusher, saveInterval int) Saver {
+func NewSaver(capacity int, fl Flusher, saveInterval time.Duration) Saver {
 	s := &saver{
 		entities: make([]recording.Appointment, 0, capacity),
 		fl: fl,
@@ -36,37 +39,49 @@ func NewSaver(capacity int, fl flusher.Flusher, saveInterval int) Saver {
 	return s
 }
 
-func (s* saver) Save(entity recording.Appointment) {
+func (s* saver) Save(entity recording.Appointment) error {
 	s.m.Lock()
 	defer s.m.Unlock()
 
+	var err error
 	if len(s.entities) == cap(s.entities) {
-		s.doFlush()
+		err = s.doFlush()
 	}
 
 	s.entities = append(s.entities, entity)
+
+	return err
 }
 
 func (s* saver) Close() {
-	s.doneCh <- true
 	close(s.doneCh)
 
-	s.flush()
+	err := s.flush()
+	if err != nil {
+		fmt.Printf("Cannot Close saver: %s\n", err)
+	}
 }
 
-func (s* saver) doFlush() {
+func (s* saver) doFlush() error {
 	fmt.Println("Going to flush", len(s.entities), "entities")
 
-	s.fl.Flush(s.entities)
+	notFlushed, err := s.fl.Flush(s.entities)
 
 	s.entities = s.entities[:0]
+	if notFlushed != nil {
+		copy(s.entities, notFlushed)
+	}
+
+	return err
 }
 
-func (s *saver) flush() {
+func (s *saver) flush() error {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	s.doFlush()
+	fmt.Println("Flushing...")
+
+	return s.doFlush()
 }
 
 func (s *saver) init() {
@@ -80,7 +95,10 @@ func (s *saver) init() {
 					return
 				case <-ticker.C:
 					fmt.Println("Tick, saving")
-					s.flush()
+					err := s.flush()
+					if err != nil {
+						fmt.Printf("Cannot flush: %s\n", err)
+					}
 			}
 		}
 

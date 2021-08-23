@@ -7,6 +7,7 @@ import (
 	"github.com/ozonva/ova-recording-api/internal/saver"
 	"github.com/ozonva/ova-recording-api/internal/utils"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
+	"sync"
 	"time"
 )
 
@@ -28,16 +29,31 @@ func main() {
 	//utils.OpenFileInCycle("/tmp/test.txt")
 
 	dummyRepo := repo.NewDummyRepo()
-	fl := flusher.NewFlusher(3, dummyRepo)
+	fl := flusher.NewFlusher(10, dummyRepo)
+	s := saver.NewSaver(20, fl, time.Second*5)
+	wg := sync.WaitGroup{}
+	numGoroutines := 10
+	numEntitiesPerGoroutine := 100
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func (myNum int) {
+			for j := 0; j < numEntitiesPerGoroutine; j++ {
+				err := s.Save(recording.Appointment{AppointmentID: uint64(j + numEntitiesPerGoroutine*myNum)})
+				if err != nil {
+					fmt.Printf("Cannot Save entitiy. what: %s\n", err)
+				}
+			}
+			wg.Done()
+		}(i)
+	}
 
-	s := saver.NewSaver(5, fl, 5)
-	s.Save(recording.Appointment{AppointmentID: 1})
-	s.Save(recording.Appointment{AppointmentID: 2})
-	time.Sleep(time.Second * 3)
-	s.Save(recording.Appointment{AppointmentID: 3})
-	s.Save(recording.Appointment{AppointmentID: 4})
-	time.Sleep(time.Second * 3)
-	s.Save(recording.Appointment{AppointmentID: 5})
-	s.Save(recording.Appointment{AppointmentID: 6})
+	wg.Wait()
+
+	//time.Sleep(time.Second * 10)
+
 	s.Close()
+
+	//time.Sleep(time.Second * 3)
+
+	fmt.Printf("Added entities: %d\n", dummyRepo.GetAddedCount())
 }

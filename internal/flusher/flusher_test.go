@@ -5,13 +5,13 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"github.com/ozonva/ova-recording-api/internal/flusher"
-	repo_mock "github.com/ozonva/ova-recording-api/internal/repo/mock"
+	mock_repo "github.com/ozonva/ova-recording-api/internal/repo/mock"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 )
 
 var _ = Describe("Flusher", func() {
 	var (
-		someRepo *repo_mock.MockRepo
+		someRepo *mock_repo.MockRepo
 		ctrl *gomock.Controller
 		someFlusher flusher.Flusher
 		entities []recording.Appointment
@@ -19,7 +19,7 @@ var _ = Describe("Flusher", func() {
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-		someRepo = repo_mock.NewMockRepo(ctrl)
+		someRepo = mock_repo.NewMockRepo(ctrl)
 		someFlusher = flusher.NewFlusher(2, someRepo)
 		entities = []recording.Appointment{
 			{
@@ -54,8 +54,10 @@ var _ = Describe("Flusher", func() {
 			It("should flush all", func() {
 				someRepo.EXPECT().AddEntities(entities[:2]).Return(nil).Times(1)
 				someRepo.EXPECT().AddEntities(entities[2:]).Return(nil).Times(1)
+				someRepo.EXPECT().GetAddedCount().Return(4).Times(1)
 				_, err := someFlusher.Flush(entities)
 				gomega.Expect(err).To(gomega.BeNil())
+				someRepo.GetAddedCount()
 			})
 		})
 	})
