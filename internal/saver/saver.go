@@ -1,6 +1,7 @@
 package saver
 
 import (
+	"errors"
 	"fmt"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 	"sync"
@@ -9,7 +10,7 @@ import (
 
 
 type Flusher interface {
-	Flush(entities []recording.Appointment) ([]recording.Appointment, error)
+	Flush(entities []recording.Appointment) []recording.Appointment
 }
 
 type Saver interface {
@@ -65,14 +66,14 @@ func (s* saver) Close() {
 func (s* saver) doFlush() error {
 	fmt.Println("Going to flush", len(s.entities), "entities")
 
-	notFlushed, err := s.fl.Flush(s.entities)
+	notFlushed := s.fl.Flush(s.entities)
 
 	s.entities = s.entities[:0]
 	if notFlushed != nil {
 		copy(s.entities, notFlushed)
+		return errors.New(fmt.Sprintf("Cannot flush %d entities", len(notFlushed)))
 	}
-
-	return err
+	return nil
 }
 
 func (s *saver) flush() error {
@@ -86,7 +87,7 @@ func (s *saver) flush() error {
 
 func (s *saver) init() {
 	go func() {
-		ticker := time.NewTicker(time.Second * time.Duration(s.saveInterval))
+		ticker := time.NewTicker(s.saveInterval)
 		defer ticker.Stop()
 		for {
 			select {

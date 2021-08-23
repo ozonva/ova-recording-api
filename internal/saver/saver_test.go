@@ -72,6 +72,8 @@ var _ = Describe("Saver", func() {
 
 				someSaver.Close()
 
+				someRepo.GetAddedCount()
+
 			})
 		})
 	})
