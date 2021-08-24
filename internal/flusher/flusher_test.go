@@ -1,6 +1,7 @@
 package flusher_test
 
 import (
+	"errors"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -50,12 +51,20 @@ var _ = Describe("Flusher", func() {
 	})
 
 	Describe("Flushing entries", func() {
-		Context("Hmm", func() {
+		Context("ok scenario", func() {
 			It("should flush all", func() {
 				someRepo.EXPECT().AddEntities(entities[:2]).Return(nil).Times(1)
 				someRepo.EXPECT().AddEntities(entities[2:]).Return(nil).Times(1)
 				unhandled := someFlusher.Flush(entities)
 				gomega.Expect(unhandled).To(gomega.BeNil())
+			})
+		})
+		Context("fail scenario", func() {
+			It("should return unhandled entities", func() {
+				someRepo.EXPECT().AddEntities(entities[:2]).Return(nil).Times(1)
+				someRepo.EXPECT().AddEntities(entities[2:]).Return(errors.New("repoError")).Times(1)
+				unhandled := someFlusher.Flush(entities)
+				gomega.Expect(unhandled).To(gomega.Equal(entities[2:]))
 			})
 		})
 	})
