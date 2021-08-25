@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
+	log "github.com/sirupsen/logrus"
 	"sync"
 	"time"
 )
@@ -59,12 +60,12 @@ func (s* saver) Close() {
 
 	err := s.flush()
 	if err != nil {
-		fmt.Printf("Cannot Close saver: %s\n", err)
+		log.Errorf("Cannot Close saver: %s\n", err)
 	}
 }
 
 func (s* saver) doFlush() error {
-	fmt.Println("Going to flush", len(s.entities), "entities")
+	log.Tracef("Going to flush %d entities\n", len(s.entities))
 
 	notFlushed := s.fl.Flush(s.entities)
 
@@ -80,7 +81,7 @@ func (s *saver) flush() error {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	fmt.Println("Flushing...")
+	log.Tracef("Flushing...")
 
 	return s.doFlush()
 }
@@ -92,13 +93,13 @@ func (s *saver) init() {
 		for {
 			select {
 				case <-s.doneCh:
-					fmt.Println("Closing ticking goroutine")
+					log.Traceln("Closing ticking goroutine")
 					return
 				case <-ticker.C:
-					fmt.Println("Tick, saving")
+					log.Traceln("Tick, saving")
 					err := s.flush()
 					if err != nil {
-						fmt.Printf("Cannot flush: %s\n", err)
+						log.Errorf("Cannot flush: %s\n", err)
 					}
 			}
 		}

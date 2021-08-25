@@ -1,10 +1,10 @@
 package flusher
 
 import (
-	"fmt"
 	"github.com/ozonva/ova-recording-api/internal/repo"
 	"github.com/ozonva/ova-recording-api/internal/utils"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
+	log "github.com/sirupsen/logrus"
 )
 
 type Flusher interface {
@@ -29,13 +29,13 @@ type flusher struct {
 func (f *flusher) Flush (entities []recording.Appointment) []recording.Appointment {
 
 	if entities == nil {
-		fmt.Println("Nil input")
+		log.Info("Nil input")
 		return entities
 	}
 
 	batches, err := utils.SplitAppointmentsToBatches(entities, f.chunkSize)
 	if err != nil {
-		fmt.Printf("Cannot split entities to batches: %s\n", err)
+		log.Errorf("Cannot split entities to batches: %s\n", err)
 		return entities
 	}
 
@@ -44,7 +44,7 @@ func (f *flusher) Flush (entities []recording.Appointment) []recording.Appointme
 	for _, batch := range batches {
 		err = f.entityRepo.AddEntities(batch)
 		if err != nil {
-			fmt.Printf("Cannot save to repo: %s\n", err)
+			log.Errorf("Cannot save to repo: %s\n", err)
 			return entities[currIndex:]
 		}
 		currIndex += len(batch)

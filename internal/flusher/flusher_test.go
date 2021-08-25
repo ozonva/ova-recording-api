@@ -73,3 +73,42 @@ var _ = Describe("Flusher", func() {
 		})
 	})
 })
+
+var _ = Describe("Flusher errors", func() {
+	var (
+		someRepo    *mock_repo.MockRepo
+		ctrl        *gomock.Controller
+		someFlusher flusher.Flusher
+		entities    []recording.Appointment
+	)
+
+	BeforeEach(func() {
+		ctrl = gomock.NewController(GinkgoT())
+		someRepo = mock_repo.NewMockRepo(ctrl)
+		someFlusher = flusher.NewFlusher(-1, someRepo)
+		entities = []recording.Appointment{
+			{
+				UserID: 100,
+				AppointmentID: 1,
+				Name: "Some appointment1",
+			},
+		}
+	})
+
+	AfterEach(func() {
+		ctrl.Finish()
+	})
+
+	Context("negative chunk size", func() {
+			It("should return all entries", func() {
+				unhandled := someFlusher.Flush(entities)
+				gomega.Expect(unhandled).To(gomega.Equal(entities))
+			})
+	})
+	Context("nil entries", func() {
+			It("should return nil", func() {
+				unhandled := someFlusher.Flush(nil)
+				gomega.Expect(unhandled).To(gomega.BeNil())
+			})
+	})
+})
