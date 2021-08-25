@@ -6,8 +6,8 @@ import (
 )
 
 type Appointment struct {
-	UserID uint64
 	AppointmentID uint64
+	UserID uint64
 	Name string
 	Description string
 	StartTime time.Time

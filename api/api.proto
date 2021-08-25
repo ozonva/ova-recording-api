@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package ova.recording.api;
+
+//import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "./api";
+
+message Appointment {
+  uint64 appointmentId = 1;
+  uint64 userId = 2;
+  string name = 3;
+  string description = 4;
+  google.protobuf.Timestamp startTime = 5;
+  google.protobuf.Timestamp endTime = 6;
+}
+
+message CreateAppointmentRequestV1 {
+  Appointment appointment = 1;
+}
+
+message DescribeAppointmentRequestV1 {
+  uint64 appointmentId = 1;
+}
+
+message ListAppointmentsRequestV1 {
+
+}
+
+message ListAppointmentsResponseV1 {
+  repeated Appointment appointments = 1;
+}
+
+message RemoveAppointmentRequestV1 {
+  uint64 appointmentId = 1;
+}
+
+service RecordingService {
+  rpc CreateAppointmentV1(CreateAppointmentRequestV1) returns (google.protobuf.Empty) {
+  }
+  rpc DescribeAppointmentV1(DescribeAppointmentRequestV1) returns (Appointment) {
+  }
+  rpc ListAppointmentsV1(ListAppointmentsRequestV1) returns (ListAppointmentsResponseV1) {
+  }
+  rpc RemoveAppointmentV1(RemoveAppointmentRequestV1) returns (google.protobuf.Empty) {
+  }
+}
