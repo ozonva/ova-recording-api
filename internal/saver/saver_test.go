@@ -58,7 +58,7 @@ var _ = Describe("Saver", func() {
 	})
 
 	Describe("Basic saving entries", func() {
-		Context("Hmm", func() {
+		Context("Usual case", func() {
 			It("should save all", func() {
 				someRepo.EXPECT().AddEntities(entities[:2]).Return(nil).Times(1)
 				someRepo.EXPECT().AddEntities(entities[2:]).Return(nil).Times(1)
