@@ -9,6 +9,7 @@ import (
 	"github.com/ozonva/ova-recording-api/internal/repo"
 	mock_repo "github.com/ozonva/ova-recording-api/internal/repo/mock"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
+	log "github.com/sirupsen/logrus"
 	"sync"
 	"time"
 
@@ -90,6 +91,7 @@ var _ = Describe("Saver Multi thread", func() {
 		someRepo = repo.NewDummyRepo()
 		someFlusher = flusher.NewFlusher(10, someRepo)
 		someSaver = saver.NewSaver(20, someFlusher, time.Second*5)
+		log.SetLevel(log.WarnLevel)
 	})
 
 	Describe("Basic saving entries", func() {
