@@ -33,7 +33,8 @@ message DescribeAppointmentRequestV1 {
 }
 
 message ListAppointmentsRequestV1 {
-
+  uint64 fromId = 1;
+  uint64 num = 2;
 }
 
 message ListAppointmentsResponseV1 {
