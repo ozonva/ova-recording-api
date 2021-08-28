@@ -1,4 +1,5 @@
-LOCAL_BIN:=$(CURDIR)/bin
+GO_BIN=$(shell go env GOPATH)/bin
+PATH:=${PATH}:${GO_BIN}
 
 .PHONY: build, run, lint
 
@@ -15,7 +16,7 @@ test:
 
 lint:
 	$(info ******************** running lint tools ********************)
-	/home/evyalyy/go/bin/golangci-lint run
+	golangci-lint run
 
 bin-deps:
 	go get -u google.golang.org/grpc
@@ -29,4 +30,4 @@ bin-deps:
 	go install github.com/envoyproxy/protoc-gen-validate
 
 generate:
-	protoc -I=./ --go_out=./pkg/recording --go-grpc_out=pkg/recording ./api/api.proto
+	protoc -I=./ --go_out=./pkg/recording --go-grpc_out=./pkg/recording ./api/api.proto
