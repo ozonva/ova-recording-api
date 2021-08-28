@@ -2,13 +2,13 @@ package recording
 
 import (
 	"context"
+	"fmt"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 )
 
-type RequestID int
 const RequestIdKey = "requestId"
 const MethodKey = "method"
-var currRequestId = 0
 
 func RequestIdInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	ctx = AddValue(ctx, RequestIdKey, NewRequestId())
@@ -17,7 +17,11 @@ func RequestIdInterceptor(ctx context.Context, req interface{}, info *grpc.Unary
 	return h, err
 }
 
-func NewRequestId() RequestID {
-	currRequestId++;
-	return RequestID(currRequestId)
+func NewRequestId() uuid.UUID {
+	newUuid, err := uuid.NewUUID()
+	if err != nil {
+		fmt.Printf("cannot get uuid: %s", err)
+		return uuid.UUID{}
+	}
+	return newUuid
 }
