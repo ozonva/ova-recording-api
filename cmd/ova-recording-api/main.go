@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	api "github.com/ozonva/ova-recording-api/internal/app/recording"
 	desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
 	log "github.com/sirupsen/logrus"
@@ -22,7 +23,13 @@ func run() error {
     log.Fatalf("failed to listen: %v", err)
   }
 
-  s := grpc.NewServer()
+  s := grpc.NewServer(
+  	grpc.UnaryInterceptor(
+  		middleware.ChainUnaryServer(
+  			api.RequestIdInterceptor,
+  		),
+  	),
+  )
   desc.RegisterRecordingServiceServer(s, api.NewRecordingServiceAPI())
 
   log.Infof("Start serving on port %s...", grpcPort)
