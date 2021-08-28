@@ -7,7 +7,15 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "./api";
 
-message Appointment {
+message InAppointmentV1 {
+  uint64 userId = 1;
+  string name = 2;
+  string description = 3;
+  google.protobuf.Timestamp startTime = 4;
+  google.protobuf.Timestamp endTime = 5;
+}
+
+message OutAppointmentV1 {
   uint64 appointmentId = 1;
   uint64 userId = 2;
   string name = 3;
@@ -17,7 +25,7 @@ message Appointment {
 }
 
 message CreateAppointmentRequestV1 {
-  Appointment appointment = 1;
+  InAppointmentV1 appointment = 1;
 }
 
 message DescribeAppointmentRequestV1 {
@@ -29,7 +37,7 @@ message ListAppointmentsRequestV1 {
 }
 
 message ListAppointmentsResponseV1 {
-  repeated Appointment appointments = 1;
+  repeated OutAppointmentV1 appointments = 1;
 }
 
 message RemoveAppointmentRequestV1 {
@@ -39,7 +47,7 @@ message RemoveAppointmentRequestV1 {
 service RecordingService {
   rpc CreateAppointmentV1(CreateAppointmentRequestV1) returns (google.protobuf.Empty) {
   }
-  rpc DescribeAppointmentV1(DescribeAppointmentRequestV1) returns (Appointment) {
+  rpc DescribeAppointmentV1(DescribeAppointmentRequestV1) returns (OutAppointmentV1) {
   }
   rpc ListAppointmentsV1(ListAppointmentsRequestV1) returns (ListAppointmentsResponseV1) {
   }

@@ -6,12 +6,12 @@ import (
 )
 
 type Appointment struct {
-	AppointmentID uint64
-	UserID uint64
-	Name string
-	Description string
-	StartTime time.Time
-	EndTime time.Time
+	AppointmentID uint64 	`db:"appointment_id"`
+	UserID uint64 			`db:"user_id"`
+	Name string 			`db:"name"`
+	Description string		`db:"description"`
+	StartTime time.Time		`db:"start_time"`
+	EndTime time.Time		`db:"end_time"`
 }
 
 func (receiver Appointment) String() string {

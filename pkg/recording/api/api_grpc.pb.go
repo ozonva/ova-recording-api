@@ -20,7 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RecordingServiceClient interface {
 	CreateAppointmentV1(ctx context.Context, in *CreateAppointmentRequestV1, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	DescribeAppointmentV1(ctx context.Context, in *DescribeAppointmentRequestV1, opts ...grpc.CallOption) (*Appointment, error)
+	DescribeAppointmentV1(ctx context.Context, in *DescribeAppointmentRequestV1, opts ...grpc.CallOption) (*OutAppointmentV1, error)
 	ListAppointmentsV1(ctx context.Context, in *ListAppointmentsRequestV1, opts ...grpc.CallOption) (*ListAppointmentsResponseV1, error)
 	RemoveAppointmentV1(ctx context.Context, in *RemoveAppointmentRequestV1, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -42,8 +42,8 @@ func (c *recordingServiceClient) CreateAppointmentV1(ctx context.Context, in *Cr
 	return out, nil
 }
 
-func (c *recordingServiceClient) DescribeAppointmentV1(ctx context.Context, in *DescribeAppointmentRequestV1, opts ...grpc.CallOption) (*Appointment, error) {
-	out := new(Appointment)
+func (c *recordingServiceClient) DescribeAppointmentV1(ctx context.Context, in *DescribeAppointmentRequestV1, opts ...grpc.CallOption) (*OutAppointmentV1, error) {
+	out := new(OutAppointmentV1)
 	err := c.cc.Invoke(ctx, "/ova.recording.api.RecordingService/DescribeAppointmentV1", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func (c *recordingServiceClient) RemoveAppointmentV1(ctx context.Context, in *Re
 // for forward compatibility
 type RecordingServiceServer interface {
 	CreateAppointmentV1(context.Context, *CreateAppointmentRequestV1) (*emptypb.Empty, error)
-	DescribeAppointmentV1(context.Context, *DescribeAppointmentRequestV1) (*Appointment, error)
+	DescribeAppointmentV1(context.Context, *DescribeAppointmentRequestV1) (*OutAppointmentV1, error)
 	ListAppointmentsV1(context.Context, *ListAppointmentsRequestV1) (*ListAppointmentsResponseV1, error)
 	RemoveAppointmentV1(context.Context, *RemoveAppointmentRequestV1) (*emptypb.Empty, error)
 	mustEmbedUnimplementedRecordingServiceServer()
@@ -87,7 +87,7 @@ type UnimplementedRecordingServiceServer struct {
 func (UnimplementedRecordingServiceServer) CreateAppointmentV1(context.Context, *CreateAppointmentRequestV1) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAppointmentV1 not implemented")
 }
-func (UnimplementedRecordingServiceServer) DescribeAppointmentV1(context.Context, *DescribeAppointmentRequestV1) (*Appointment, error) {
+func (UnimplementedRecordingServiceServer) DescribeAppointmentV1(context.Context, *DescribeAppointmentRequestV1) (*OutAppointmentV1, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DescribeAppointmentV1 not implemented")
 }
 func (UnimplementedRecordingServiceServer) ListAppointmentsV1(context.Context, *ListAppointmentsRequestV1) (*ListAppointmentsResponseV1, error) {

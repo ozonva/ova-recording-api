@@ -9,7 +9,7 @@ build: ./cmd/ova-recording-api/main.go
 
 .PHONY: run
 run: ./cmd/ova-recording-api/main.go
-	go run ./cmd/ova-recording-api
+	go run ./cmd/ova-recording-api --config config/config.yml
 
 .PHONY: test
 test:

@@ -20,9 +20,9 @@ func (a *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.CreateAp
   return &emptypb.Empty{}, nil
 }
 
-func (a *ServiceAPI) DescribeAppointmentV1(ctx context.Context, req *desc.DescribeAppointmentRequestV1) (*desc.Appointment, error) {
+func (a *ServiceAPI) DescribeAppointmentV1(ctx context.Context, req *desc.DescribeAppointmentRequestV1) (*desc.OutAppointmentV1, error) {
   GetLogger(ctx).Infof("Got DescribeAppointmentV1 request: %s", req)
-  return &desc.Appointment{Name: "not implemented"}, nil
+  return &desc.OutAppointmentV1{Name: "not implemented"}, nil
 }
 
 func (a *ServiceAPI) ListAppointmentsV1(ctx context.Context, req *desc.ListAppointmentsRequestV1) (*desc.ListAppointmentsResponseV1, error) {
