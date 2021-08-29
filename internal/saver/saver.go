@@ -1,7 +1,6 @@
 package saver
 
 import (
-	"errors"
 	"fmt"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 	log "github.com/sirupsen/logrus"
@@ -72,7 +71,7 @@ func (s* saver) doFlush() error {
 	s.entities = s.entities[:0]
 	if notFlushed != nil {
 		copy(s.entities, notFlushed)
-		return errors.New(fmt.Sprintf("Cannot flush %d entities", len(notFlushed)))
+		return fmt.Errorf("cannot flush %d entities", len(notFlushed))
 	}
 	return nil
 }

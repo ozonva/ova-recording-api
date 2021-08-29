@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 )
@@ -11,7 +10,7 @@ func AppointmentsSliceToMap(appointments []recording.Appointment) (map[uint64]re
 
 	for _, app := range appointments {
 		if _, ok := out[app.AppointmentID]; ok {
-			return nil, errors.New(fmt.Sprintf("Duplicate id %d", app.AppointmentID))
+			return nil, fmt.Errorf("duplicate id %d", app.AppointmentID)
 		}
 		out[app.AppointmentID] = app
 	}
