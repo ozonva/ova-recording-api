@@ -24,6 +24,10 @@ message DescribeAppointmentV1Request {
   uint64 appointment_id = 1;
 }
 
+message DescribeAppointmentV1Response {
+  Appointment appointment = 1;
+}
+
 message ListAppointmentsV1Request {
 
 }
@@ -39,7 +43,7 @@ message RemoveAppointmentV1Request {
 service RecordingService {
   rpc CreateAppointmentV1(CreateAppointmentV1Request) returns (google.protobuf.Empty) {
   }
-  rpc DescribeAppointmentV1(DescribeAppointmentV1Request) returns (Appointment) {
+  rpc DescribeAppointmentV1(DescribeAppointmentV1Request) returns (DescribeAppointmentV1Response) {
   }
   rpc ListAppointmentsV1(ListAppointmentsV1Request) returns (ListAppointmentsV1Response) {
   }
