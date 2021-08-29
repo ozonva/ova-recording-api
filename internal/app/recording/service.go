@@ -31,7 +31,7 @@ func (a *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.CreateAp
     EndTime: req.Appointment.EndTime.AsTime(),
   }
 
-  err := a.r.AddEntities([]recording.Appointment{app})
+  err := a.r.AddEntities(ctx, []recording.Appointment{app})
   if err != nil {
     GetLogger(ctx).Errorf("Cannot add entity: %s", err)
   }
@@ -42,7 +42,7 @@ func (a *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.CreateAp
 func (a *ServiceAPI) DescribeAppointmentV1(ctx context.Context, req *desc.DescribeAppointmentRequestV1) (*desc.OutAppointmentV1, error) {
   GetLogger(ctx).Infof("Got DescribeAppointmentV1 request: %s", req)
 
-  app, err := a.r.DescribeEntity(req.AppointmentId)
+  app, err := a.r.DescribeEntity(ctx, req.AppointmentId)
   if err != nil {
     GetLogger(ctx).Errorf("cannot describe appointment: %s", err)
   }
@@ -62,7 +62,7 @@ func (a *ServiceAPI) DescribeAppointmentV1(ctx context.Context, req *desc.Descri
 func (a *ServiceAPI) ListAppointmentsV1(ctx context.Context, req *desc.ListAppointmentsRequestV1) (*desc.ListAppointmentsResponseV1, error) {
   GetLogger(ctx).Infof("Got ListAppointmentsV1 request: %s", req)
 
-  res, err := a.r.ListEntities(req.Num, req.FromId)
+  res, err := a.r.ListEntities(ctx, req.Num, req.FromId)
   if err != nil {
     GetLogger(ctx).Errorf("Cannot list: %s", err)
     return nil ,err
@@ -85,5 +85,11 @@ func (a *ServiceAPI) ListAppointmentsV1(ctx context.Context, req *desc.ListAppoi
 
 func (a *ServiceAPI) RemoveAppointmentV1(ctx context.Context, req *desc.RemoveAppointmentRequestV1) (*emptypb.Empty, error) {
   GetLogger(ctx).Infof("Got RemoveAppointmentV1 request: %s", req)
-  return &emptypb.Empty{}, nil
+
+  err := a.r.RemoveEntity(ctx, req.AppointmentId)
+  if err != nil {
+    GetLogger(ctx).Errorf("Cannot remove entity %d: %s", req.AppointmentId, err)
+  }
+
+  return &emptypb.Empty{}, err
 }

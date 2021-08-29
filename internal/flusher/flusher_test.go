@@ -1,6 +1,7 @@
 package flusher_test
 
 import (
+	"context"
 	"errors"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -12,16 +13,19 @@ import (
 
 var _ = Describe("Flusher", func() {
 	var (
-		someRepo *mock_repo.MockRepo
 		ctrl *gomock.Controller
+		ctx context.Context
+		someRepo *mock_repo.MockRepo
 		someFlusher flusher.Flusher
 		entities []recording.Appointment
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
+		ctx = context.Background()
 		someRepo = mock_repo.NewMockRepo(ctrl)
 		someFlusher = flusher.NewFlusher(2, someRepo)
+
 		entities = []recording.Appointment{
 			{
 				UserID: 100,
@@ -53,20 +57,20 @@ var _ = Describe("Flusher", func() {
 	Describe("Flushing entries", func() {
 		Context("ok scenario", func() {
 			It("should flush all", func() {
-				someRepo.EXPECT().AddEntities(entities[:2]).Return(nil).Times(1)
-				someRepo.EXPECT().AddEntities(entities[2:]).Return(nil).Times(1)
+				someRepo.EXPECT().AddEntities(ctx, entities[:2]).Return(nil).Times(1)
+				someRepo.EXPECT().AddEntities(ctx, entities[2:]).Return(nil).Times(1)
 
 				unhandled := someFlusher.Flush(entities)
 				gomega.Expect(unhandled).To(gomega.BeNil())
 
-				someRepo.EXPECT().GetAddedCount().Return(4).Times(1)
-				someRepo.GetAddedCount()
+				someRepo.EXPECT().GetAddedCount(ctx).Return(4).Times(1)
+				someRepo.GetAddedCount(ctx)
 			})
 		})
 		Context("fail scenario", func() {
 			It("should return unhandled entities", func() {
-				someRepo.EXPECT().AddEntities(entities[:2]).Return(nil).Times(1)
-				someRepo.EXPECT().AddEntities(entities[2:]).Return(errors.New("repoError")).Times(1)
+				someRepo.EXPECT().AddEntities(ctx, entities[:2]).Return(nil).Times(1)
+				someRepo.EXPECT().AddEntities(ctx, entities[2:]).Return(errors.New("repoError")).Times(1)
 				unhandled := someFlusher.Flush(entities)
 				gomega.Expect(unhandled).To(gomega.Equal(entities[2:]))
 			})
