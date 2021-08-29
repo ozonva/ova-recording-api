@@ -19,10 +19,10 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RecordingServiceClient interface {
-	CreateAppointmentV1(ctx context.Context, in *CreateAppointmentRequestV1, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	DescribeAppointmentV1(ctx context.Context, in *DescribeAppointmentRequestV1, opts ...grpc.CallOption) (*OutAppointmentV1, error)
-	ListAppointmentsV1(ctx context.Context, in *ListAppointmentsRequestV1, opts ...grpc.CallOption) (*ListAppointmentsResponseV1, error)
-	RemoveAppointmentV1(ctx context.Context, in *RemoveAppointmentRequestV1, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CreateAppointmentV1(ctx context.Context, in *CreateAppointmentV1Request, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DescribeAppointmentV1(ctx context.Context, in *DescribeAppointmentV1Request, opts ...grpc.CallOption) (*DescribeAppointmentV1Response, error)
+	ListAppointmentsV1(ctx context.Context, in *ListAppointmentsV1Request, opts ...grpc.CallOption) (*ListAppointmentsV1Response, error)
+	RemoveAppointmentV1(ctx context.Context, in *RemoveAppointmentV1Request, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type recordingServiceClient struct {
@@ -33,7 +33,7 @@ func NewRecordingServiceClient(cc grpc.ClientConnInterface) RecordingServiceClie
 	return &recordingServiceClient{cc}
 }
 
-func (c *recordingServiceClient) CreateAppointmentV1(ctx context.Context, in *CreateAppointmentRequestV1, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *recordingServiceClient) CreateAppointmentV1(ctx context.Context, in *CreateAppointmentV1Request, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/ova.recording.api.RecordingService/CreateAppointmentV1", in, out, opts...)
 	if err != nil {
@@ -42,8 +42,8 @@ func (c *recordingServiceClient) CreateAppointmentV1(ctx context.Context, in *Cr
 	return out, nil
 }
 
-func (c *recordingServiceClient) DescribeAppointmentV1(ctx context.Context, in *DescribeAppointmentRequestV1, opts ...grpc.CallOption) (*OutAppointmentV1, error) {
-	out := new(OutAppointmentV1)
+func (c *recordingServiceClient) DescribeAppointmentV1(ctx context.Context, in *DescribeAppointmentV1Request, opts ...grpc.CallOption) (*DescribeAppointmentV1Response, error) {
+	out := new(DescribeAppointmentV1Response)
 	err := c.cc.Invoke(ctx, "/ova.recording.api.RecordingService/DescribeAppointmentV1", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -51,8 +51,8 @@ func (c *recordingServiceClient) DescribeAppointmentV1(ctx context.Context, in *
 	return out, nil
 }
 
-func (c *recordingServiceClient) ListAppointmentsV1(ctx context.Context, in *ListAppointmentsRequestV1, opts ...grpc.CallOption) (*ListAppointmentsResponseV1, error) {
-	out := new(ListAppointmentsResponseV1)
+func (c *recordingServiceClient) ListAppointmentsV1(ctx context.Context, in *ListAppointmentsV1Request, opts ...grpc.CallOption) (*ListAppointmentsV1Response, error) {
+	out := new(ListAppointmentsV1Response)
 	err := c.cc.Invoke(ctx, "/ova.recording.api.RecordingService/ListAppointmentsV1", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (c *recordingServiceClient) ListAppointmentsV1(ctx context.Context, in *Lis
 	return out, nil
 }
 
-func (c *recordingServiceClient) RemoveAppointmentV1(ctx context.Context, in *RemoveAppointmentRequestV1, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *recordingServiceClient) RemoveAppointmentV1(ctx context.Context, in *RemoveAppointmentV1Request, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/ova.recording.api.RecordingService/RemoveAppointmentV1", in, out, opts...)
 	if err != nil {
@@ -73,10 +73,10 @@ func (c *recordingServiceClient) RemoveAppointmentV1(ctx context.Context, in *Re
 // All implementations must embed UnimplementedRecordingServiceServer
 // for forward compatibility
 type RecordingServiceServer interface {
-	CreateAppointmentV1(context.Context, *CreateAppointmentRequestV1) (*emptypb.Empty, error)
-	DescribeAppointmentV1(context.Context, *DescribeAppointmentRequestV1) (*OutAppointmentV1, error)
-	ListAppointmentsV1(context.Context, *ListAppointmentsRequestV1) (*ListAppointmentsResponseV1, error)
-	RemoveAppointmentV1(context.Context, *RemoveAppointmentRequestV1) (*emptypb.Empty, error)
+	CreateAppointmentV1(context.Context, *CreateAppointmentV1Request) (*emptypb.Empty, error)
+	DescribeAppointmentV1(context.Context, *DescribeAppointmentV1Request) (*DescribeAppointmentV1Response, error)
+	ListAppointmentsV1(context.Context, *ListAppointmentsV1Request) (*ListAppointmentsV1Response, error)
+	RemoveAppointmentV1(context.Context, *RemoveAppointmentV1Request) (*emptypb.Empty, error)
 	mustEmbedUnimplementedRecordingServiceServer()
 }
 
@@ -84,16 +84,16 @@ type RecordingServiceServer interface {
 type UnimplementedRecordingServiceServer struct {
 }
 
-func (UnimplementedRecordingServiceServer) CreateAppointmentV1(context.Context, *CreateAppointmentRequestV1) (*emptypb.Empty, error) {
+func (UnimplementedRecordingServiceServer) CreateAppointmentV1(context.Context, *CreateAppointmentV1Request) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAppointmentV1 not implemented")
 }
-func (UnimplementedRecordingServiceServer) DescribeAppointmentV1(context.Context, *DescribeAppointmentRequestV1) (*OutAppointmentV1, error) {
+func (UnimplementedRecordingServiceServer) DescribeAppointmentV1(context.Context, *DescribeAppointmentV1Request) (*DescribeAppointmentV1Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DescribeAppointmentV1 not implemented")
 }
-func (UnimplementedRecordingServiceServer) ListAppointmentsV1(context.Context, *ListAppointmentsRequestV1) (*ListAppointmentsResponseV1, error) {
+func (UnimplementedRecordingServiceServer) ListAppointmentsV1(context.Context, *ListAppointmentsV1Request) (*ListAppointmentsV1Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAppointmentsV1 not implemented")
 }
-func (UnimplementedRecordingServiceServer) RemoveAppointmentV1(context.Context, *RemoveAppointmentRequestV1) (*emptypb.Empty, error) {
+func (UnimplementedRecordingServiceServer) RemoveAppointmentV1(context.Context, *RemoveAppointmentV1Request) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveAppointmentV1 not implemented")
 }
 func (UnimplementedRecordingServiceServer) mustEmbedUnimplementedRecordingServiceServer() {}
@@ -110,7 +110,7 @@ func RegisterRecordingServiceServer(s grpc.ServiceRegistrar, srv RecordingServic
 }
 
 func _RecordingService_CreateAppointmentV1_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateAppointmentRequestV1)
+	in := new(CreateAppointmentV1Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -122,13 +122,13 @@ func _RecordingService_CreateAppointmentV1_Handler(srv interface{}, ctx context.
 		FullMethod: "/ova.recording.api.RecordingService/CreateAppointmentV1",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RecordingServiceServer).CreateAppointmentV1(ctx, req.(*CreateAppointmentRequestV1))
+		return srv.(RecordingServiceServer).CreateAppointmentV1(ctx, req.(*CreateAppointmentV1Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _RecordingService_DescribeAppointmentV1_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DescribeAppointmentRequestV1)
+	in := new(DescribeAppointmentV1Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -140,13 +140,13 @@ func _RecordingService_DescribeAppointmentV1_Handler(srv interface{}, ctx contex
 		FullMethod: "/ova.recording.api.RecordingService/DescribeAppointmentV1",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RecordingServiceServer).DescribeAppointmentV1(ctx, req.(*DescribeAppointmentRequestV1))
+		return srv.(RecordingServiceServer).DescribeAppointmentV1(ctx, req.(*DescribeAppointmentV1Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _RecordingService_ListAppointmentsV1_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListAppointmentsRequestV1)
+	in := new(ListAppointmentsV1Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -158,13 +158,13 @@ func _RecordingService_ListAppointmentsV1_Handler(srv interface{}, ctx context.C
 		FullMethod: "/ova.recording.api.RecordingService/ListAppointmentsV1",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RecordingServiceServer).ListAppointmentsV1(ctx, req.(*ListAppointmentsRequestV1))
+		return srv.(RecordingServiceServer).ListAppointmentsV1(ctx, req.(*ListAppointmentsV1Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _RecordingService_RemoveAppointmentV1_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveAppointmentRequestV1)
+	in := new(RemoveAppointmentV1Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func _RecordingService_RemoveAppointmentV1_Handler(srv interface{}, ctx context.
 		FullMethod: "/ova.recording.api.RecordingService/RemoveAppointmentV1",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RecordingServiceServer).RemoveAppointmentV1(ctx, req.(*RemoveAppointmentRequestV1))
+		return srv.(RecordingServiceServer).RemoveAppointmentV1(ctx, req.(*RemoveAppointmentV1Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }

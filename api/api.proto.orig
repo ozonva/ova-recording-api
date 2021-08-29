@@ -24,25 +24,39 @@ message OutAppointmentV1 {
   google.protobuf.Timestamp end_time = 6;
 }
 
-message CreateAppointmentV1Request {
+<<<<<<< HEAD
+message CreateAppointmentRequestV1 {
   InAppointmentV1 appointment = 1;
+=======
+message CreateAppointmentV1Request {
+  Appointment appointment = 1;
+>>>>>>> master
 }
 
 message DescribeAppointmentV1Request {
   uint64 appointment_id = 1;
 }
 
-message DescribeAppointmentV1Response {
-  OutAppointmentV1 appointment = 1;
-}
-
-message ListAppointmentsV1Request {
+<<<<<<< HEAD
+message ListAppointmentsRequestV1 {
   uint64 from_id = 1;
   uint64 num = 2;
 }
 
-message ListAppointmentsV1Response {
+message ListAppointmentsResponseV1 {
   repeated OutAppointmentV1 appointments = 1;
+=======
+message DescribeAppointmentV1Response {
+  Appointment appointment = 1;
+}
+
+message ListAppointmentsV1Request {
+
+}
+
+message ListAppointmentsV1Response {
+  repeated Appointment appointments = 1;
+>>>>>>> master
 }
 
 message RemoveAppointmentV1Request {
@@ -52,7 +66,11 @@ message RemoveAppointmentV1Request {
 service RecordingService {
   rpc CreateAppointmentV1(CreateAppointmentV1Request) returns (google.protobuf.Empty) {
   }
+<<<<<<< HEAD
+  rpc DescribeAppointmentV1(DescribeAppointmentRequestV1) returns (OutAppointmentV1) {
+=======
   rpc DescribeAppointmentV1(DescribeAppointmentV1Request) returns (DescribeAppointmentV1Response) {
+>>>>>>> master
   }
   rpc ListAppointmentsV1(ListAppointmentsV1Request) returns (ListAppointmentsV1Response) {
   }

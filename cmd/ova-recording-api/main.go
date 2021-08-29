@@ -108,6 +108,6 @@ func runClient() {
 	log.Info("Try to make requests")
 
 	a := desc.InAppointmentV1{Name: "Some hello name"}
-	client.CreateAppointmentV1(ctx, &desc.CreateAppointmentRequestV1{Appointment: &a})
-	client.ListAppointmentsV1(ctx, &desc.ListAppointmentsRequestV1{FromId: 0, Num: 100})
+	client.CreateAppointmentV1(ctx, &desc.CreateAppointmentV1Request{Appointment: &a})
+	client.ListAppointmentsV1(ctx, &desc.ListAppointmentsV1Request{FromId: 0, Num: 100})
 }

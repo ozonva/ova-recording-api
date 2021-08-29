@@ -7,15 +7,7 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "./api";
 
-message InAppointmentV1 {
-  uint64 user_id = 1;
-  string name = 2;
-  string description = 3;
-  google.protobuf.Timestamp start_time = 4;
-  google.protobuf.Timestamp end_time = 5;
-}
-
-message OutAppointmentV1 {
+message Appointment {
   uint64 appointment_id = 1;
   uint64 user_id = 2;
   string name = 3;
@@ -25,7 +17,7 @@ message OutAppointmentV1 {
 }
 
 message CreateAppointmentV1Request {
-  InAppointmentV1 appointment = 1;
+  Appointment appointment = 1;
 }
 
 message DescribeAppointmentV1Request {
@@ -33,16 +25,15 @@ message DescribeAppointmentV1Request {
 }
 
 message DescribeAppointmentV1Response {
-  OutAppointmentV1 appointment = 1;
+  Appointment appointment = 1;
 }
 
 message ListAppointmentsV1Request {
-  uint64 from_id = 1;
-  uint64 num = 2;
+
 }
 
 message ListAppointmentsV1Response {
-  repeated OutAppointmentV1 appointments = 1;
+  repeated Appointment appointments = 1;
 }
 
 message RemoveAppointmentV1Request {
