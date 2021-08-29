@@ -61,7 +61,7 @@ func main() {
 
 		for i := 0; i < 10; i++ {
 			a := desc.Appointment{AppointmentId: 1, Name: "Some hello name"}
-			_, err = client.CreateAppointmentV1(ctx, &desc.CreateAppointmentRequestV1{Appointment: &a})
+			_, err = client.CreateAppointmentV1(ctx, &desc.CreateAppointmentV1Request{Appointment: &a})
 			if err != nil {
 				log.Errorf("Got error from server: %s", err)
 			} else {
