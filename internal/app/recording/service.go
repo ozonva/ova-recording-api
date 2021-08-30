@@ -20,16 +20,41 @@ func NewRecordingServiceAPI(inRepo repo.Repo) desc.RecordingServiceServer {
   }
 }
 
+func AppointmentToApiInput (appointment *recording.Appointment) *desc.InAppointmentV1 {
+  return &desc.InAppointmentV1{
+    UserId: appointment.UserID,
+    Name: appointment.Name,
+    Description: appointment.Description,
+    StartTime: timestamppb.New(appointment.StartTime),
+    EndTime: timestamppb.New(appointment.EndTime),
+  }
+}
+
+func AppointmentFromApiInput (appointment *desc.InAppointmentV1) recording.Appointment {
+  return recording.Appointment{
+    UserID: appointment.UserId,
+    Name: appointment.Name,
+    Description: appointment.Description,
+    StartTime: appointment.StartTime.AsTime(),
+    EndTime: appointment.EndTime.AsTime(),
+  }
+}
+
+func AppointmentToApiOutput (appointment *recording.Appointment) *desc.OutAppointmentV1 {
+  return &desc.OutAppointmentV1{
+    AppointmentId: appointment.AppointmentID,
+    UserId: appointment.UserID,
+    Name: appointment.Name,
+    Description: appointment.Description,
+    StartTime: timestamppb.New(appointment.StartTime),
+    EndTime: timestamppb.New(appointment.EndTime),
+  }
+}
+
 func (a *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.CreateAppointmentV1Request) (*emptypb.Empty, error) {
   GetLogger(ctx).Infof("Got CreateAppointmentV1 request: %s", req)
 
-  app := recording.Appointment{
-    UserID: req.Appointment.UserId,
-    Name: req.Appointment.Name,
-    Description: req.Appointment.Description,
-    StartTime: req.Appointment.StartTime.AsTime(),
-    EndTime: req.Appointment.EndTime.AsTime(),
-  }
+  app := AppointmentFromApiInput(req.Appointment)
 
   err := a.r.AddEntities(ctx, []recording.Appointment{app})
   if err != nil {
@@ -47,16 +72,9 @@ func (a *ServiceAPI) DescribeAppointmentV1(ctx context.Context, req *desc.Descri
     GetLogger(ctx).Errorf("cannot describe appointment: %s", err)
   }
 
-  out := desc.OutAppointmentV1{
-    AppointmentId: app.AppointmentID,
-    UserId: app.UserID,
-    Name: app.Name,
-    Description: app.Description,
-    StartTime: timestamppb.New(app.StartTime),
-    EndTime: timestamppb.New(app.EndTime),
-  }
+  out := AppointmentToApiOutput(app)
 
-  return &desc.DescribeAppointmentV1Response{Appointment: &out}, nil
+  return &desc.DescribeAppointmentV1Response{Appointment: out}, nil
 }
 
 func (a *ServiceAPI) ListAppointmentsV1(ctx context.Context, req *desc.ListAppointmentsV1Request) (*desc.ListAppointmentsV1Response, error) {
@@ -70,14 +88,7 @@ func (a *ServiceAPI) ListAppointmentsV1(ctx context.Context, req *desc.ListAppoi
 
   out := &desc.ListAppointmentsV1Response{Appointments: make([]*desc.OutAppointmentV1, len(res))}
   for i, app := range res {
-    out.Appointments[i] = &desc.OutAppointmentV1{
-      AppointmentId: app.AppointmentID,
-      UserId: app.UserID,
-      Name: app.Name,
-      Description: app.Description,
-      StartTime: timestamppb.New(app.StartTime),
-      EndTime: timestamppb.New(app.EndTime),
-    }
+    out.Appointments[i] = AppointmentToApiOutput(&app)
   }
 
   return out, nil

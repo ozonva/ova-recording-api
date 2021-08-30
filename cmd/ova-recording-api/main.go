@@ -98,16 +98,25 @@ func runClient() {
 
 	log.Info("Dialed")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	ctx := context.Background()
 
 	client := desc.NewRecordingServiceClient(conn)
 
-	time.Sleep(time.Second*3)
+	time.Sleep(time.Second*1)
 
 	log.Info("Try to make requests")
 
 	a := desc.InAppointmentV1{Name: "Some hello name"}
-	client.CreateAppointmentV1(ctx, &desc.CreateAppointmentV1Request{Appointment: &a})
-	client.ListAppointmentsV1(ctx, &desc.ListAppointmentsV1Request{FromId: 0, Num: 100})
+	_, err = client.CreateAppointmentV1(ctx, &desc.CreateAppointmentV1Request{Appointment: &a})
+	if err != nil {
+		log.Errorf("cannot create appointment: %s", err)
+		return
+	}
+	resp, err := client.ListAppointmentsV1(ctx, &desc.ListAppointmentsV1Request{FromId: 0, Num: 100})
+	if err != nil {
+		log.Errorf("cannot list appointments: %s", err)
+		return
+	}
+
+	log.Infof("List: %v", resp)
 }
