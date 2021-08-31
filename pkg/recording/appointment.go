@@ -15,8 +15,12 @@ type Appointment struct {
 }
 
 func (receiver Appointment) String() string {
-	return fmt.Sprintf("Appointment(user=%d,id=%d,name=%s)",
+	return fmt.Sprintf("Appointment(user=%d,id=%d,name=%s,desc=%s,start_time=%v,end_time=%v)",
 		receiver.UserID,
 		receiver.AppointmentID,
-		receiver.Name)
+		receiver.Name,
+		receiver.Description,
+		receiver.StartTime,
+		receiver.EndTime,
+	)
 }

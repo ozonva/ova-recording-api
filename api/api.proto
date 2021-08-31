@@ -37,8 +37,8 @@ message DescribeAppointmentV1Response {
 }
 
 message ListAppointmentsV1Request {
-  uint64 from_id = 1;
-  uint64 num = 2;
+  uint64 offset = 1;
+  uint64 limit = 2;
 }
 
 message ListAppointmentsV1Response {

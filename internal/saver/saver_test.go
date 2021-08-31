@@ -32,7 +32,7 @@ var _ = Describe("Saver", func() {
 		ctx = context.Background()
 		someRepo = mock_repo.NewMockRepo(ctrl)
 		someFlusher = flusher.NewFlusher(2, someRepo)
-		someSaver = saver.NewSaver(2, someFlusher, time.Second*3)
+		someSaver = saver.NewSaver(2, someFlusher, time.Millisecond*500)
 		entities = []recording.Appointment{
 			{
 				UserID: 100,
@@ -72,7 +72,7 @@ var _ = Describe("Saver", func() {
 					gomega.Expect(err).To(gomega.BeNil())
 				}
 
-				time.Sleep(time.Second * 5)
+				time.Sleep(time.Millisecond * 800)
 
 				someSaver.Close()
 

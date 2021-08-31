@@ -20,6 +20,10 @@ const (
   grpcServerEndpoint = "localhost:8888"
 )
 
+var (
+	server *grpc.Server
+)
+
 func ConnectToDatabase(cfg api.Config) *sqlx.DB {
 	db, err := sqlx.Connect("pgx", cfg.GetConnString())
 	if err != nil {
@@ -65,7 +69,7 @@ func run() error {
 
 	currRepo := repo.NewRepo(db)
 
-	s := grpc.NewServer(
+	server = grpc.NewServer(
 		grpc.UnaryInterceptor(
 			middleware.ChainUnaryServer(
 				api.RequestIdInterceptor,
@@ -73,11 +77,11 @@ func run() error {
 		),
 	)
 
-	desc.RegisterRecordingServiceServer(s, api.NewRecordingServiceAPI(currRepo))
+	desc.RegisterRecordingServiceServer(server, api.NewRecordingServiceAPI(currRepo))
 
 	log.Infof("Start serving on port %s...", grpcPort)
 
-	if err := s.Serve(listen); err != nil {
+	if err := server.Serve(listen); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
 
@@ -112,11 +116,13 @@ func runClient() {
 		log.Errorf("cannot create appointment: %s", err)
 		return
 	}
-	resp, err := client.ListAppointmentsV1(ctx, &desc.ListAppointmentsV1Request{FromId: 0, Num: 100})
+	resp, err := client.ListAppointmentsV1(ctx, &desc.ListAppointmentsV1Request{Offset: 0, Limit: 100})
 	if err != nil {
 		log.Errorf("cannot list appointments: %s", err)
 		return
 	}
 
 	log.Infof("List: %v", resp)
+
+	server.GracefulStop()
 }

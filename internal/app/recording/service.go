@@ -2,6 +2,7 @@ package recording
 
 import (
   "context"
+  "fmt"
   "github.com/ozonva/ova-recording-api/internal/repo"
   "github.com/ozonva/ova-recording-api/pkg/recording"
   desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
@@ -11,12 +12,12 @@ import (
 
 type ServiceAPI struct {
   desc.UnimplementedRecordingServiceServer
-  r repo.Repo
+  repository repo.Repo
 }
 
 func NewRecordingServiceAPI(inRepo repo.Repo) desc.RecordingServiceServer {
   return &ServiceAPI{
-    r: inRepo,
+    repository: inRepo,
   }
 }
 
@@ -25,8 +26,8 @@ func AppointmentToApiInput (appointment *recording.Appointment) *desc.InAppointm
     UserId: appointment.UserID,
     Name: appointment.Name,
     Description: appointment.Description,
-    StartTime: timestamppb.New(appointment.StartTime),
-    EndTime: timestamppb.New(appointment.EndTime),
+    StartTime: timestamppb.New(appointment.StartTime.UTC()),
+    EndTime: timestamppb.New(appointment.EndTime.UTC()),
   }
 }
 
@@ -51,12 +52,20 @@ func AppointmentToApiOutput (appointment *recording.Appointment) *desc.OutAppoin
   }
 }
 
-func (a *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.CreateAppointmentV1Request) (*emptypb.Empty, error) {
+func (service *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.CreateAppointmentV1Request) (out *emptypb.Empty, err error) {
   GetLogger(ctx).Infof("Got CreateAppointmentV1 request: %s", req)
+
+  if req.Appointment == nil {
+    err = fmt.Errorf("request field `Appointment` is nil")
+    GetLogger(ctx).Error(err)
+    return
+  }
 
   app := AppointmentFromApiInput(req.Appointment)
 
-  err := a.r.AddEntities(ctx, []recording.Appointment{app})
+  GetLogger(ctx).Infof("Try to add %v", []recording.Appointment{app})
+
+  err = service.repository.AddEntities(ctx, []recording.Appointment{app})
   if err != nil {
     GetLogger(ctx).Errorf("Cannot add entity: %s", err)
   }
@@ -64,10 +73,10 @@ func (a *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.CreateAp
   return &emptypb.Empty{}, err
 }
 
-func (a *ServiceAPI) DescribeAppointmentV1(ctx context.Context, req *desc.DescribeAppointmentV1Request) (*desc.DescribeAppointmentV1Response, error) {
+func (service *ServiceAPI) DescribeAppointmentV1(ctx context.Context, req *desc.DescribeAppointmentV1Request) (*desc.DescribeAppointmentV1Response, error) {
   GetLogger(ctx).Infof("Got DescribeAppointmentV1 request: %s", req)
 
-  app, err := a.r.DescribeEntity(ctx, req.AppointmentId)
+  app, err := service.repository.DescribeEntity(ctx, req.AppointmentId)
   if err != nil {
     GetLogger(ctx).Errorf("cannot describe appointment: %s", err)
   }
@@ -77,10 +86,10 @@ func (a *ServiceAPI) DescribeAppointmentV1(ctx context.Context, req *desc.Descri
   return &desc.DescribeAppointmentV1Response{Appointment: out}, nil
 }
 
-func (a *ServiceAPI) ListAppointmentsV1(ctx context.Context, req *desc.ListAppointmentsV1Request) (*desc.ListAppointmentsV1Response, error) {
+func (service *ServiceAPI) ListAppointmentsV1(ctx context.Context, req *desc.ListAppointmentsV1Request) (*desc.ListAppointmentsV1Response, error) {
   GetLogger(ctx).Infof("Got ListAppointmentsV1 request: %s", req)
 
-  res, err := a.r.ListEntities(ctx, req.Num, req.FromId)
+  res, err := service.repository.ListEntities(ctx, req.Limit, req.Offset)
   if err != nil {
     GetLogger(ctx).Errorf("Cannot list: %s", err)
     return nil ,err
@@ -94,10 +103,10 @@ func (a *ServiceAPI) ListAppointmentsV1(ctx context.Context, req *desc.ListAppoi
   return out, nil
 }
 
-func (a *ServiceAPI) RemoveAppointmentV1(ctx context.Context, req *desc.RemoveAppointmentV1Request) (*emptypb.Empty, error) {
+func (service *ServiceAPI) RemoveAppointmentV1(ctx context.Context, req *desc.RemoveAppointmentV1Request) (*emptypb.Empty, error) {
   GetLogger(ctx).Infof("Got RemoveAppointmentV1 request: %s", req)
 
-  err := a.r.RemoveEntity(ctx, req.AppointmentId)
+  err := service.repository.RemoveEntity(ctx, req.AppointmentId)
   if err != nil {
     GetLogger(ctx).Errorf("Cannot remove entity %d: %s", req.AppointmentId, err)
   }

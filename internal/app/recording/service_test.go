@@ -3,115 +3,110 @@ package recording_test
 import (
 	"context"
 	"github.com/golang/mock/gomock"
-	middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 	api "github.com/ozonva/ova-recording-api/internal/app/recording"
 	mock_repo "github.com/ozonva/ova-recording-api/internal/repo/mock"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 	desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
-	"github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
-	"net"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
-)
-
-const (
-  grpcPort = ":8888"
-  grpcServerEndpoint = "localhost:8888"
 )
 
 var _ = Describe("Service", func() {
 	var (
 		ctrl *gomock.Controller
-		ctx context.Context
 		someRepo *mock_repo.MockRepo
-		listen net.Listener
-		srv *grpc.Server
-		conn *grpc.ClientConn
-		client desc.RecordingServiceClient
-		entities []recording.Appointment
-		err error
+		srv desc.RecordingServiceServer
 	)
+
 	BeforeEach(func() {
-		entities = []recording.Appointment{
-			{
-				AppointmentID: 1,
-				Name: "Name1",
-				UserID: 1,
-				Description: "some desc 1",
-				StartTime: time.Now(),
-				EndTime: time.Now(),
-			},
-			{
-				AppointmentID: 2,
-				Name: "Name2",
-				UserID: 1,
-				Description: "some desc 2",
-				StartTime: time.Now(),
-				EndTime: time.Now(),
-			},
-		}
 		ctrl = gomock.NewController(GinkgoT())
-		ctx = context.Background()
 		someRepo = mock_repo.NewMockRepo(ctrl)
-		srv = grpc.NewServer(
-			grpc.UnaryInterceptor(
-				middleware.ChainUnaryServer(
-					api.RequestIdInterceptor,
-				),
-			),
-		)
-		desc.RegisterRecordingServiceServer(srv, api.NewRecordingServiceAPI(someRepo))
-
-		listen, err = net.Listen("tcp", grpcPort)
-		if err != nil {
-			logrus.Fatalf("failed to listen: %v", err)
-		}
-
-		conn, err = grpc.Dial(grpcServerEndpoint, grpc.WithInsecure(), grpc.WithBlock())
-		if err != nil {
-			logrus.Fatalf("did not connect: %v", err)
-		}
-
-		client = desc.NewRecordingServiceClient(conn)
-
-		time.Sleep(time.Second*1)
+		srv = api.NewRecordingServiceAPI(someRepo)
 	})
 
 	AfterEach(func() {
 		ctrl.Finish()
-		err := conn.Close()
-		if err != nil {
-			logrus.Warnf("Cannot close client connection: %s", err)
-		}
 	})
 
-	Describe("Serving", func() {
-		Context("ok scenario", func() {
-			It("Should handle all", func() {
-				go func() {
-					if err := srv.Serve(listen); err != nil {
-						logrus.Fatalf("failed to serve: %v", err)
-					}
-				}()
-				someRepo.EXPECT().AddEntities(gomock.Any(), entities[0]).Return(nil).Times(1)
-				//someRepo.EXPECT().AddEntities(ctx, entities[1]).Return(nil).Times(1)
+	Context("ok scenario", func() {
+		It("create", func() {
+			entity := recording.Appointment{
+				UserID: 1,
+				StartTime: time.Now().UTC(),
+				EndTime: time.Now().UTC(),
+			}
+			someRepo.EXPECT().AddEntities(gomock.Any(), []recording.Appointment{entity}).Return(nil).Times(1)
 
-				_, err := client.CreateAppointmentV1(ctx,
-					&desc.CreateAppointmentV1Request{
-						Appointment: api.AppointmentToApiInput(&entities[0]),
-					},
-				)
-				gomega.Expect(err).To(gomega.BeNil())
-				//
-				//_, err = client.CreateAppointmentV1(ctx,
-				//	&desc.CreateAppointmentV1Request{
-				//		Appointment: api.AppointmentToApiInput(&entities[1]),
-				//	},
-				//)
-				//gomega.Expect(err).To(gomega.BeNil())
+			_, err := srv.CreateAppointmentV1(context.Background(), &desc.CreateAppointmentV1Request{
+				Appointment: &desc.InAppointmentV1{
+					UserId: entity.UserID,
+					StartTime: timestamppb.New(entity.StartTime),
+					EndTime: timestamppb.New(entity.EndTime),
+				},
 			})
+
+			Expect(err).To(BeNil())
+		})
+
+		It("describe", func() {
+			entity := recording.Appointment{
+				AppointmentID: 1,
+				UserID: 1,
+				StartTime: time.Now().UTC(),
+				EndTime: time.Now().UTC(),
+			}
+			someRepo.EXPECT().DescribeEntity(gomock.Any(), entity.AppointmentID).Return(&entity, nil).Times(1)
+
+			resp, err := srv.DescribeAppointmentV1(context.Background(), &desc.DescribeAppointmentV1Request{
+				AppointmentId: entity.AppointmentID,
+			})
+
+			Expect(err).To(BeNil())
+
+			Expect(resp.Appointment.AppointmentId).To(Equal(entity.AppointmentID))
+			Expect(resp.Appointment.UserId).To(Equal(entity.UserID))
+			Expect(resp.Appointment.Name).To(Equal(entity.Name))
+			Expect(resp.Appointment.Description).To(Equal(entity.Description))
+			Expect(resp.Appointment.StartTime).To(Equal(timestamppb.New(entity.StartTime)))
+			Expect(resp.Appointment.EndTime).To(Equal(timestamppb.New(entity.EndTime)))
+		})
+
+		It("list", func() {
+			entity := recording.Appointment{
+				AppointmentID: 1,
+				UserID: 1,
+				Name: "some name",
+				Description: "some desc",
+				StartTime: time.Now().UTC(),
+				EndTime: time.Now().UTC(),
+			}
+			someRepo.EXPECT().ListEntities(gomock.Any(), uint64(1), uint64(0)).Return([]recording.Appointment{entity}, nil).Times(1)
+
+			resp, err := srv.ListAppointmentsV1(context.Background(), &desc.ListAppointmentsV1Request{
+				Offset: 0, Limit: 1,
+			})
+
+			Expect(err).To(BeNil())
+
+			Expect(resp.Appointments[0].AppointmentId).To(Equal(entity.AppointmentID))
+			Expect(resp.Appointments[0].UserId).To(Equal(entity.UserID))
+			Expect(resp.Appointments[0].Name).To(Equal(entity.Name))
+			Expect(resp.Appointments[0].Description).To(Equal(entity.Description))
+			Expect(resp.Appointments[0].StartTime).To(Equal(timestamppb.New(entity.StartTime)))
+			Expect(resp.Appointments[0].EndTime).To(Equal(timestamppb.New(entity.EndTime)))
+		})
+
+		It("remote", func() {
+
+			someRepo.EXPECT().RemoveEntity(gomock.Any(), uint64(1)).Return(nil).Times(1)
+
+			_, err := srv.RemoveAppointmentV1(context.Background(), &desc.RemoveAppointmentV1Request{
+				AppointmentId: 1,
+			})
+
+			Expect(err).To(BeNil())
 		})
 	})
 })
