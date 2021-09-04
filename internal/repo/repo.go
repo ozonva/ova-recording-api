@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"github.com/huandu/go-sqlbuilder"
 	"github.com/jmoiron/sqlx"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 	log "github.com/sirupsen/logrus"
@@ -31,20 +32,15 @@ type repo struct {
 }
 
 func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment) error {
-	query := "INSERT INTO appointments(user_id, name, description, start_time, end_time) VALUES ($1, $2, $3, $4, $5)"
-	tx, err := r.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return err
-	}
-
+	ib := sqlbuilder.PostgreSQL.NewInsertBuilder()
+	ib.InsertInto("appointments")
+	ib.Cols("user_id", "name", "description", "start_time", "end_time")
 	for _, ent := range entities {
-		_, err := tx.ExecContext(ctx, query, ent.UserID, ent.Name, ent.Description, ent.StartTime, ent.EndTime)
-		if err != nil {
-			return err
-		}
+		ib.Values(ent.UserID, ent.Name, ent.Description, ent.StartTime, ent.EndTime)
 	}
+	sql, args := ib.Build()
 
-	err = tx.Commit()
+	_, err := r.db.ExecContext(ctx, sql, args...)
 	if err != nil {
 		return err
 	}
@@ -72,7 +68,7 @@ func (r *repo) ListEntities(ctx context.Context, limit, offset uint64) ([]record
 
 	out := make([]recording.Appointment, 0)
 
-	for ok := result.Next(); ok; ok = result.Next() {
+	for result.Next() {
 		var a recording.Appointment
 		err := result.StructScan(&a)
 		if err != nil {
@@ -80,6 +76,11 @@ func (r *repo) ListEntities(ctx context.Context, limit, offset uint64) ([]record
 		}
 		out = append(out, a)
 	}
+
+	if result.Err() != nil {
+		return out, result.Err()
+	}
+
 	return out, nil
 }
 
