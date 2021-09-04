@@ -6,7 +6,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	api "github.com/ozonva/ova-recording-api/internal/app/recording"
+	"github.com/ozonva/ova-recording-api/internal/flusher"
 	mock_repo "github.com/ozonva/ova-recording-api/internal/repo/mock"
+	"github.com/ozonva/ova-recording-api/internal/saver"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 	desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -17,16 +19,23 @@ var _ = Describe("Service", func() {
 	var (
 		ctrl *gomock.Controller
 		someRepo *mock_repo.MockRepo
+		fl flusher.Flusher
+		sv saver.Saver
 		srv desc.RecordingServiceServer
+		ctx context.Context
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		someRepo = mock_repo.NewMockRepo(ctrl)
-		srv = api.NewRecordingServiceAPI(someRepo)
+		fl = flusher.NewFlusher(10, someRepo)
+		sv = saver.NewSaver(50, fl, time.Second*5)
+		srv = api.NewRecordingServiceAPI(someRepo, sv)
+		ctx = api.AddValue(context.Background(), "test", 1)
 	})
 
 	AfterEach(func() {
+		sv.Close()
 		ctrl.Finish()
 	})
 
@@ -39,11 +48,36 @@ var _ = Describe("Service", func() {
 			}
 			someRepo.EXPECT().AddEntities(gomock.Any(), []recording.Appointment{entity}).Return(nil).Times(1)
 
-			_, err := srv.CreateAppointmentV1(context.Background(), &desc.CreateAppointmentV1Request{
+			_, err := srv.CreateAppointmentV1(ctx, &desc.CreateAppointmentV1Request{
 				Appointment: &desc.InAppointmentV1{
 					UserId: entity.UserID,
 					StartTime: timestamppb.New(entity.StartTime),
 					EndTime: timestamppb.New(entity.EndTime),
+				},
+			})
+
+			Expect(err).To(BeNil())
+		})
+
+		It("multi create", func() {
+			entities := []recording.Appointment{
+				{
+					UserID:    1,
+					StartTime: time.Now().UTC(),
+					EndTime:   time.Now().UTC(),
+				},
+				{
+					UserID:    2,
+					StartTime: time.Now().UTC(),
+					EndTime:   time.Now().UTC(),
+				},
+			}
+			someRepo.EXPECT().AddEntities(gomock.Any(), entities).Return(nil).Times(1)
+
+			_, err := srv.MultiCreateAppointmentsV1(ctx, &desc.MultiCreateAppointmentsV1Request{
+				Appointments: []*desc.InAppointmentV1{
+					api.AppointmentToApiInput(&entities[0]),
+					api.AppointmentToApiInput(&entities[1]),
 				},
 			})
 
@@ -59,7 +93,7 @@ var _ = Describe("Service", func() {
 			}
 			someRepo.EXPECT().DescribeEntity(gomock.Any(), entity.AppointmentID).Return(&entity, nil).Times(1)
 
-			resp, err := srv.DescribeAppointmentV1(context.Background(), &desc.DescribeAppointmentV1Request{
+			resp, err := srv.DescribeAppointmentV1(ctx, &desc.DescribeAppointmentV1Request{
 				AppointmentId: entity.AppointmentID,
 			})
 
@@ -84,7 +118,7 @@ var _ = Describe("Service", func() {
 			}
 			someRepo.EXPECT().ListEntities(gomock.Any(), uint64(1), uint64(0)).Return([]recording.Appointment{entity}, nil).Times(1)
 
-			resp, err := srv.ListAppointmentsV1(context.Background(), &desc.ListAppointmentsV1Request{
+			resp, err := srv.ListAppointmentsV1(ctx, &desc.ListAppointmentsV1Request{
 				Offset: 0, Limit: 1,
 			})
 
@@ -98,11 +132,11 @@ var _ = Describe("Service", func() {
 			Expect(resp.Appointments[0].EndTime).To(Equal(timestamppb.New(entity.EndTime)))
 		})
 
-		It("remote", func() {
+		It("remove", func() {
 
 			someRepo.EXPECT().RemoveEntity(gomock.Any(), uint64(1)).Return(nil).Times(1)
 
-			_, err := srv.RemoveAppointmentV1(context.Background(), &desc.RemoveAppointmentV1Request{
+			_, err := srv.RemoveAppointmentV1(ctx, &desc.RemoveAppointmentV1Request{
 				AppointmentId: 1,
 			})
 

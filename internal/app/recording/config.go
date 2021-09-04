@@ -16,6 +16,9 @@ type Config struct {
 		User string		`yaml:"user"`
 		Password string	`yaml:"password"`
 	} `yaml:"database"`
+	ChunkSize int `yaml:"chunkSize"`
+	Capacity int `yaml:"capacity"`
+	SaveIntervalSec int `yaml:"saveIntervalSec"`
 }
 
 func (cfg Config) GetConnString() string {

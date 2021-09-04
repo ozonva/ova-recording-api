@@ -10,15 +10,35 @@ import (
   "google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type ServiceAPI struct {
-  desc.UnimplementedRecordingServiceServer
-  repository repo.Repo
+type Repo interface {
+	AddEntities(ctx context.Context, entities []recording.Appointment) error
+    ListEntities(ctx context.Context, limit, offset uint64) ([]recording.Appointment, error)
+    DescribeEntity(ctx context.Context, entityId uint64) (*recording.Appointment, error)
+	RemoveEntity(ctx context.Context, entityId uint64) error
+	GetAddedCount(ctx context.Context) int
 }
 
-func NewRecordingServiceAPI(inRepo repo.Repo) desc.RecordingServiceServer {
-  return &ServiceAPI{
+type Flusher interface {
+	Flush(entities []recording.Appointment) []recording.Appointment
+}
+
+type Saver interface {
+	Save(entity recording.Appointment) error
+	Close()
+}
+
+type ServiceAPI struct {
+  desc.UnimplementedRecordingServiceServer
+  repository Repo
+  currSaver Saver
+}
+
+func NewRecordingServiceAPI(inRepo repo.Repo, sv Saver) desc.RecordingServiceServer {
+  api := &ServiceAPI{
     repository: inRepo,
+    currSaver: sv,
   }
+  return api
 }
 
 func AppointmentToApiInput (appointment *recording.Appointment) *desc.InAppointmentV1 {
@@ -68,6 +88,28 @@ func (service *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.Cr
   err = service.repository.AddEntities(ctx, []recording.Appointment{app})
   if err != nil {
     GetLogger(ctx).Errorf("Cannot add entity: %s", err)
+  }
+
+  return &emptypb.Empty{}, err
+}
+
+func (service *ServiceAPI) MultiCreateAppointmentsV1(ctx context.Context, req *desc.MultiCreateAppointmentsV1Request) (out *emptypb.Empty, err error) {
+  GetLogger(ctx).Infof("Got MultiCreateAppointmentsV1 request: %s", req)
+
+  if req.Appointments == nil {
+    err = fmt.Errorf("request field `Appointments` is nil")
+    GetLogger(ctx).Error(err)
+    return
+  }
+
+  for _, inApp := range req.Appointments {
+    app := AppointmentFromApiInput(inApp)
+    GetLogger(ctx).Infof("Try to add %v", app)
+    err := service.currSaver.Save(app)
+    if err != nil {
+      GetLogger(ctx).Errorf("Cannot Save entity: %s", err)
+      break
+    }
   }
 
   return &emptypb.Empty{}, err

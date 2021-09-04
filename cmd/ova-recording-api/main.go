@@ -7,7 +7,9 @@ import (
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
 	api "github.com/ozonva/ova-recording-api/internal/app/recording"
+	"github.com/ozonva/ova-recording-api/internal/flusher"
 	"github.com/ozonva/ova-recording-api/internal/repo"
+	"github.com/ozonva/ova-recording-api/internal/saver"
 	desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -68,6 +70,9 @@ func run() error {
 	}(db)
 
 	currRepo := repo.NewRepo(db)
+	fl := flusher.NewFlusher(cfg.ChunkSize, currRepo)
+	sv := saver.NewSaver(cfg.Capacity, fl, time.Duration(cfg.SaveIntervalSec) * time.Second)
+	defer sv.Close()
 
 	server = grpc.NewServer(
 		grpc.UnaryInterceptor(
@@ -77,13 +82,18 @@ func run() error {
 		),
 	)
 
-	desc.RegisterRecordingServiceServer(server, api.NewRecordingServiceAPI(currRepo))
+	desc.RegisterRecordingServiceServer(server, api.NewRecordingServiceAPI(
+		currRepo,
+		sv,
+	))
 
 	log.Infof("Start serving on port %s...", grpcPort)
 
 	if err := server.Serve(listen); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+
+	log.Info("Shutting down...")
 
 	return nil
 }
@@ -106,8 +116,6 @@ func runClient() {
 
 	client := desc.NewRecordingServiceClient(conn)
 
-	time.Sleep(time.Second*1)
-
 	log.Info("Try to make requests")
 
 	a := desc.InAppointmentV1{Name: "Some hello name"}
@@ -123,6 +131,18 @@ func runClient() {
 	}
 
 	log.Infof("List: %v", resp)
+
+	_, err = client.MultiCreateAppointmentsV1(ctx, &desc.MultiCreateAppointmentsV1Request{
+		Appointments: []*desc.InAppointmentV1{
+			{Name: "test1", Description: "123"},
+			{Name: "test2", Description: "456"},
+		},
+	})
+
+	if err != nil {
+		log.Errorf("cannot multi add appointments: %s", err)
+		return
+	}
 
 	server.GracefulStop()
 }
