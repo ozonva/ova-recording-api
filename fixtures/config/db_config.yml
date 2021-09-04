@@ -1,0 +1,6 @@
+database:
+  host: localhost
+  port: 5433
+  database: appointments_test
+  user: recording_test_user
+  password: recording_test_password
