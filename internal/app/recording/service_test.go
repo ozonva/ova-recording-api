@@ -59,6 +59,32 @@ var _ = Describe("Service", func() {
 			Expect(err).To(BeNil())
 		})
 
+		It("update", func() {
+			entity := recording.Appointment{
+				AppointmentID: 1,
+				UserID: 1,
+				Name: "name",
+				Description: "desc",
+				StartTime: time.Now().UTC(),
+				EndTime: time.Now().UTC(),
+			}
+			someRepo.EXPECT().UpdateEntity(gomock.Any(),
+				entity.AppointmentID, entity.UserID,
+				entity.Name, entity.Description,
+				entity.StartTime, entity.EndTime).Return(nil).Times(1)
+
+			_, err := srv.UpdateAppointmentV1(ctx, &desc.UpdateAppointmentV1Request{
+				AppointmentId: entity.AppointmentID,
+				UserId: entity.UserID,
+				Name: entity.Name,
+				Description: entity.Description,
+				StartTime: timestamppb.New(entity.StartTime),
+				EndTime: timestamppb.New(entity.EndTime),
+			})
+
+			Expect(err).To(BeNil())
+		})
+
 		It("multi create", func() {
 			entities := []recording.Appointment{
 				{

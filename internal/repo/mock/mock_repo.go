@@ -7,6 +7,7 @@ package mock_repo
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 	recording "github.com/ozonva/ova-recording-api/pkg/recording"
@@ -105,4 +106,18 @@ func (m *MockRepo) RemoveEntity(ctx context.Context, entityId uint64) error {
 func (mr *MockRepoMockRecorder) RemoveEntity(ctx, entityId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveEntity", reflect.TypeOf((*MockRepo)(nil).RemoveEntity), ctx, entityId)
+}
+
+// UpdateEntity mocks base method.
+func (m *MockRepo) UpdateEntity(ctx context.Context, entityId, userId uint64, name, description string, startTime, endTime time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateEntity", ctx, entityId, userId, name, description, startTime, endTime)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEntity indicates an expected call of UpdateEntity.
+func (mr *MockRepoMockRecorder) UpdateEntity(ctx, entityId, userId, name, description, startTime, endTime interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEntity", reflect.TypeOf((*MockRepo)(nil).UpdateEntity), ctx, entityId, userId, name, description, startTime, endTime)
 }

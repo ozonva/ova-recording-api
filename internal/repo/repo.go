@@ -7,10 +7,18 @@ import (
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 	log "github.com/sirupsen/logrus"
 	"sync"
+	"time"
 )
 
 type Repo interface {
 	AddEntities(ctx context.Context, entities []recording.Appointment) error
+	UpdateEntity(ctx context.Context,
+				entityId uint64,
+				userId uint64,
+				name string,
+				description string,
+				startTime time.Time,
+				endTime time.Time) error
     ListEntities(ctx context.Context, limit, offset uint64) ([]recording.Appointment, error)
     DescribeEntity(ctx context.Context, entityId uint64) (*recording.Appointment, error)
 	RemoveEntity(ctx context.Context, entityId uint64) error
@@ -50,6 +58,40 @@ func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment
 	r.m.Unlock()
 
 	return nil
+}
+
+func (r *repo) UpdateEntity(ctx context.Context,
+				entityId uint64,
+				userId uint64,
+				name string,
+				description string,
+				startTime time.Time,
+				endTime time.Time) error {
+	ub := sqlbuilder.PostgreSQL.NewUpdateBuilder()
+	ub.Update("appointments")
+
+	if userId > 0 {
+		ub.Set(ub.Assign("user_id", userId))
+	}
+	if len(name) > 0 {
+		ub.SetMore(ub.Assign("name", name))
+	}
+	if len(description) > 0 {
+		ub.SetMore(ub.Assign("description", description))
+	}
+	if !startTime.IsZero() {
+		ub.SetMore(ub.Assign("start_time", startTime))
+	}
+	if !endTime.IsZero() {
+		ub.SetMore(ub.Assign("end_time", endTime))
+	}
+
+	ub.Where(ub.Equal("appointment_id", entityId))
+
+	sql, args := ub.Build()
+
+	_, err := r.db.ExecContext(ctx, sql, args...)
+	return err
 }
 
 func (r *repo) ListEntities(ctx context.Context, limit, offset uint64) ([]recording.Appointment, error) {
@@ -125,6 +167,19 @@ func (r *dummyRepo) AddEntities(ctx context.Context, entities []recording.Appoin
 		log.Infof("dummyRepo: Add entity %s\n", entity)
 
 	}
+	return nil
+}
+
+func (r *dummyRepo) UpdateEntity(ctx context.Context,
+				entityId uint64,
+				userId uint64,
+				name string,
+				description string,
+				startTime time.Time,
+				endTime time.Time) error {
+	log.Infof("dummyRepo: UpdateEntity(%d, %d, %s, %s, %v, %v",
+		entityId, userId, name, description, startTime, endTime)
+
 	return nil
 }
 

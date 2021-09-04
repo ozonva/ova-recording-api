@@ -28,6 +28,15 @@ message CreateAppointmentV1Request {
   InAppointmentV1 appointment = 1;
 }
 
+message UpdateAppointmentV1Request {
+  uint64 appointment_id = 1;
+  uint64 user_id = 2;
+  string name = 3;
+  string description = 4;
+  google.protobuf.Timestamp start_time = 5;
+  google.protobuf.Timestamp end_time = 6;
+}
+
 message MultiCreateAppointmentsV1Request {
   repeated InAppointmentV1 appointments = 1;
 }
@@ -55,6 +64,8 @@ message RemoveAppointmentV1Request {
 
 service RecordingService {
   rpc CreateAppointmentV1(CreateAppointmentV1Request) returns (google.protobuf.Empty) {
+  }
+  rpc UpdateAppointmentV1(UpdateAppointmentV1Request) returns (google.protobuf.Empty) {
   }
   rpc MultiCreateAppointmentsV1(MultiCreateAppointmentsV1Request) returns (google.protobuf.Empty) {
   }

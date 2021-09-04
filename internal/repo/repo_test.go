@@ -85,6 +85,25 @@ var _ = Describe("Repo", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
+		It("Update entity", func() {
+			err := testRepo.UpdateEntity(
+				context.Background(),
+				testData[0].AppointmentID,
+				10,
+				"UPDATED", "UPDATED",
+				time.Time{}, time.Time{})
+			gomega.Expect(err).To(gomega.BeNil())
+
+			res, err := testRepo.DescribeEntity(context.Background(), testData[0].AppointmentID)
+
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(res.UserID).To(gomega.BeEquivalentTo(10))
+			gomega.Expect(res.Name).To(gomega.BeEquivalentTo("UPDATED"))
+			gomega.Expect(res.Description).To(gomega.BeEquivalentTo("UPDATED"))
+			gomega.Expect(res.StartTime).To(gomega.BeEquivalentTo(testData[0].StartTime))
+			gomega.Expect(res.EndTime).To(gomega.BeEquivalentTo(testData[0].EndTime))
+		})
+
 		It("Remove entity", func() {
 			err := testRepo.RemoveEntity(
 				context.Background(),

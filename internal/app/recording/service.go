@@ -8,10 +8,18 @@ import (
   desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
   "google.golang.org/protobuf/types/known/emptypb"
   "google.golang.org/protobuf/types/known/timestamppb"
+  "time"
 )
 
 type Repo interface {
 	AddEntities(ctx context.Context, entities []recording.Appointment) error
+    UpdateEntity(ctx context.Context,
+				entityId uint64,
+				userId uint64,
+				name string,
+				description string,
+				startTime time.Time,
+				endTime time.Time) error
     ListEntities(ctx context.Context, limit, offset uint64) ([]recording.Appointment, error)
     DescribeEntity(ctx context.Context, entityId uint64) (*recording.Appointment, error)
 	RemoveEntity(ctx context.Context, entityId uint64) error
@@ -88,6 +96,22 @@ func (service *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.Cr
   err = service.repository.AddEntities(ctx, []recording.Appointment{app})
   if err != nil {
     GetLogger(ctx).Errorf("Cannot add entity: %s", err)
+  }
+
+  return &emptypb.Empty{}, err
+}
+
+func (service *ServiceAPI) UpdateAppointmentV1(ctx context.Context, req *desc.UpdateAppointmentV1Request) (out *emptypb.Empty, err error) {
+  GetLogger(ctx).Infof("Got UpdateAppointmentV1 request: %s", req)
+
+  err = service.repository.UpdateEntity(ctx,
+    req.AppointmentId, req.UserId,
+    req.Name, req.Description,
+    req.StartTime.AsTime(), req.EndTime.AsTime(),
+  )
+
+  if err != nil {
+    GetLogger(ctx).Errorf("Cannot update entity: %s", err)
   }
 
   return &emptypb.Empty{}, err

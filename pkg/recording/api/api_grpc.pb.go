@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RecordingServiceClient interface {
 	CreateAppointmentV1(ctx context.Context, in *CreateAppointmentV1Request, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UpdateAppointmentV1(ctx context.Context, in *UpdateAppointmentV1Request, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	MultiCreateAppointmentsV1(ctx context.Context, in *MultiCreateAppointmentsV1Request, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DescribeAppointmentV1(ctx context.Context, in *DescribeAppointmentV1Request, opts ...grpc.CallOption) (*DescribeAppointmentV1Response, error)
 	ListAppointmentsV1(ctx context.Context, in *ListAppointmentsV1Request, opts ...grpc.CallOption) (*ListAppointmentsV1Response, error)
@@ -37,6 +38,15 @@ func NewRecordingServiceClient(cc grpc.ClientConnInterface) RecordingServiceClie
 func (c *recordingServiceClient) CreateAppointmentV1(ctx context.Context, in *CreateAppointmentV1Request, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/ova.recording.api.RecordingService/CreateAppointmentV1", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *recordingServiceClient) UpdateAppointmentV1(ctx context.Context, in *UpdateAppointmentV1Request, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/ova.recording.api.RecordingService/UpdateAppointmentV1", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -84,6 +94,7 @@ func (c *recordingServiceClient) RemoveAppointmentV1(ctx context.Context, in *Re
 // for forward compatibility
 type RecordingServiceServer interface {
 	CreateAppointmentV1(context.Context, *CreateAppointmentV1Request) (*emptypb.Empty, error)
+	UpdateAppointmentV1(context.Context, *UpdateAppointmentV1Request) (*emptypb.Empty, error)
 	MultiCreateAppointmentsV1(context.Context, *MultiCreateAppointmentsV1Request) (*emptypb.Empty, error)
 	DescribeAppointmentV1(context.Context, *DescribeAppointmentV1Request) (*DescribeAppointmentV1Response, error)
 	ListAppointmentsV1(context.Context, *ListAppointmentsV1Request) (*ListAppointmentsV1Response, error)
@@ -97,6 +108,9 @@ type UnimplementedRecordingServiceServer struct {
 
 func (UnimplementedRecordingServiceServer) CreateAppointmentV1(context.Context, *CreateAppointmentV1Request) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAppointmentV1 not implemented")
+}
+func (UnimplementedRecordingServiceServer) UpdateAppointmentV1(context.Context, *UpdateAppointmentV1Request) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateAppointmentV1 not implemented")
 }
 func (UnimplementedRecordingServiceServer) MultiCreateAppointmentsV1(context.Context, *MultiCreateAppointmentsV1Request) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method MultiCreateAppointmentsV1 not implemented")
@@ -137,6 +151,24 @@ func _RecordingService_CreateAppointmentV1_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RecordingServiceServer).CreateAppointmentV1(ctx, req.(*CreateAppointmentV1Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RecordingService_UpdateAppointmentV1_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateAppointmentV1Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecordingServiceServer).UpdateAppointmentV1(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ova.recording.api.RecordingService/UpdateAppointmentV1",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecordingServiceServer).UpdateAppointmentV1(ctx, req.(*UpdateAppointmentV1Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -223,6 +255,10 @@ var RecordingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateAppointmentV1",
 			Handler:    _RecordingService_CreateAppointmentV1_Handler,
+		},
+		{
+			MethodName: "UpdateAppointmentV1",
+			Handler:    _RecordingService_UpdateAppointmentV1_Handler,
 		},
 		{
 			MethodName: "MultiCreateAppointmentsV1",
