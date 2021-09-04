@@ -1,6 +1,0 @@
-- appointment_id: 1
-  user_id: 1
-  name: some test name
-  description: some desc
-  start_time: 2020-12-31 23:59:59
-  end_time: 2021-12-31 23:59:59

@@ -31,14 +31,14 @@ type repo struct {
 }
 
 func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment) error {
-	query := "INSERT INTO appointments(user_id, name, description, start_time, end_time) VALUES (:user_id, :name, :description, :start_time, :end_time)"
+	query := "INSERT INTO appointments(user_id, name, description, start_time, end_time) VALUES ($1, $2, $3, $4, $5)"
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
 	for _, ent := range entities {
-		_, err := tx.NamedExecContext(ctx, query, ent)
+		_, err := tx.ExecContext(ctx, query, ent.UserID, ent.Name, ent.Description, ent.StartTime, ent.EndTime)
 		if err != nil {
 			return err
 		}

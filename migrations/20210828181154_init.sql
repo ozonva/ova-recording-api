@@ -5,8 +5,8 @@ CREATE TABLE appointments (
   user_id bigint NOT NULL,
   name text NOT NULL,
   description text NOT NULL DEFAULT '',
-  start_time date NOT NULL,
-  end_time date NOT NULL
+  start_time timestamp NOT NULL,
+  end_time timestamp NOT NULL
 );
 -- +goose StatementEnd
 
