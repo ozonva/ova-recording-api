@@ -48,13 +48,19 @@ func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment
 	}
 	sql, args := ib.Build()
 
-	_, err := r.db.ExecContext(ctx, sql, args...)
+	res, err := r.db.ExecContext(ctx, sql, args...)
 	if err != nil {
 		return err
 	}
 
+	addedCount, err := res.RowsAffected()
+	if err != nil {
+		log.Warnf("cannot get affected rows: %s", err)
+		return nil
+	}
+
 	r.m.Lock()
-	r.addedCount += len(entities)
+	r.addedCount += int(addedCount)
 	r.m.Unlock()
 
 	return nil
