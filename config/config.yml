@@ -6,4 +6,4 @@ database:
   password: recording_password
 chunkSize: 50
 capacity: 100
-saveInterval: 5
+saveIntervalSec: 5

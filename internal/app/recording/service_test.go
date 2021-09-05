@@ -5,13 +5,14 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/opentracing/opentracing-go"
 	api "github.com/ozonva/ova-recording-api/internal/app/recording"
-	"github.com/ozonva/ova-recording-api/internal/flusher"
 	mock_repo "github.com/ozonva/ova-recording-api/internal/repo/mock"
-	"github.com/ozonva/ova-recording-api/internal/saver"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 	desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"io"
 	"time"
 )
 
@@ -19,23 +20,29 @@ var _ = Describe("Service", func() {
 	var (
 		ctrl *gomock.Controller
 		someRepo *mock_repo.MockRepo
-		fl flusher.Flusher
-		sv saver.Saver
 		srv desc.RecordingServiceServer
 		ctx context.Context
+		tracingCloser io.Closer
+		span opentracing.Span
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		someRepo = mock_repo.NewMockRepo(ctrl)
-		fl = flusher.NewFlusher(10, someRepo)
-		sv = saver.NewSaver(50, fl, time.Second*5)
-		srv = api.NewRecordingServiceAPI(someRepo, sv)
+		srv = api.NewRecordingServiceAPI(someRepo, 10)
 		ctx = api.AddValue(context.Background(), "test", 1)
+		tracingCloser = api.SetupTracing()
+		tracer := opentracing.GlobalTracer()
+		span = tracer.StartSpan("TEST")
+		ctx = context.WithValue(ctx, api.SpanKey, span)
 	})
 
 	AfterEach(func() {
-		sv.Close()
+		span.Finish()
+		err := tracingCloser.Close()
+		if err != nil {
+			log.Errorf("Cannot close tracing %s", err)
+		}
 		ctrl.Finish()
 	})
 

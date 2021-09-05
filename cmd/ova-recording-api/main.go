@@ -3,16 +3,17 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
 	api "github.com/ozonva/ova-recording-api/internal/app/recording"
-	"github.com/ozonva/ova-recording-api/internal/flusher"
 	"github.com/ozonva/ova-recording-api/internal/repo"
-	"github.com/ozonva/ova-recording-api/internal/saver"
 	desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"io"
 	"net"
 	"time"
 )
@@ -70,22 +71,28 @@ func run() error {
 	}(db)
 
 	currRepo := repo.NewRepo(db)
-	fl := flusher.NewFlusher(cfg.ChunkSize, currRepo)
-	sv := saver.NewSaver(cfg.Capacity, fl, time.Duration(cfg.SaveIntervalSec) * time.Second)
-	defer sv.Close()
 
 	server = grpc.NewServer(
 		grpc.UnaryInterceptor(
 			middleware.ChainUnaryServer(
 				api.RequestIdInterceptor,
+				api.TracingInterceptor,
 			),
 		),
 	)
 
 	desc.RegisterRecordingServiceServer(server, api.NewRecordingServiceAPI(
 		currRepo,
-		sv,
+		cfg.ChunkSize,
 	))
+
+	tracingCloser := api.SetupTracing()
+	defer func(tracingCloser io.Closer) {
+		err := tracingCloser.Close()
+		if err != nil {
+			log.Errorf("Cannot close opentracing tracer: %s", err)
+		}
+	}(tracingCloser)
 
 	log.Infof("Start serving on port %s...", grpcPort)
 
@@ -132,12 +139,17 @@ func runClient() {
 
 	log.Infof("List: %v", resp)
 
-	_, err = client.MultiCreateAppointmentsV1(ctx, &desc.MultiCreateAppointmentsV1Request{
-		Appointments: []*desc.InAppointmentV1{
-			{Name: "test1", Description: "123"},
-			{Name: "test2", Description: "456"},
-		},
-	})
+	req := &desc.MultiCreateAppointmentsV1Request{}
+	for i := 0; i < 100; i++ {
+		req.Appointments = append(req.Appointments, &desc.InAppointmentV1{
+			UserId: uint64(i),
+			Name: fmt.Sprintf("Name %d", i),
+			StartTime: timestamppb.New(time.Now()),
+			EndTime: timestamppb.New(time.Now()),
+		})
+	}
+
+	_, err = client.MultiCreateAppointmentsV1(ctx, req)
 
 	if err != nil {
 		log.Errorf("cannot multi add appointments: %s", err)

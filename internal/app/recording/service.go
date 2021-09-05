@@ -3,11 +3,19 @@ package recording
 import (
   "context"
   "fmt"
+  "github.com/opentracing/opentracing-go"
+  opLog "github.com/opentracing/opentracing-go/log"
   "github.com/ozonva/ova-recording-api/internal/repo"
   "github.com/ozonva/ova-recording-api/pkg/recording"
   desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
+  log "github.com/sirupsen/logrus"
+  "github.com/uber/jaeger-client-go"
+  jaegercfg "github.com/uber/jaeger-client-go/config"
+  jaegerlog "github.com/uber/jaeger-client-go/log"
+  "github.com/uber/jaeger-lib/metrics"
   "google.golang.org/protobuf/types/known/emptypb"
   "google.golang.org/protobuf/types/known/timestamppb"
+  "io"
   "time"
 )
 
@@ -26,25 +34,16 @@ type Repo interface {
 	GetAddedCount(ctx context.Context) int
 }
 
-type Flusher interface {
-	Flush(entities []recording.Appointment) []recording.Appointment
-}
-
-type Saver interface {
-	Save(entity recording.Appointment) error
-	Close()
-}
-
 type ServiceAPI struct {
   desc.UnimplementedRecordingServiceServer
   repository Repo
-  currSaver Saver
+  batchSize int
 }
 
-func NewRecordingServiceAPI(inRepo repo.Repo, sv Saver) desc.RecordingServiceServer {
+func NewRecordingServiceAPI(inRepo repo.Repo, batchSize int) desc.RecordingServiceServer {
   api := &ServiceAPI{
     repository: inRepo,
-    currSaver: sv,
+    batchSize: batchSize,
   }
   return api
 }
@@ -78,6 +77,40 @@ func AppointmentToApiOutput (appointment *recording.Appointment) *desc.OutAppoin
     StartTime: timestamppb.New(appointment.StartTime),
     EndTime: timestamppb.New(appointment.EndTime),
   }
+}
+
+func SetupTracing() io.Closer {
+	cfg := jaegercfg.Configuration{
+        ServiceName: "grpc_recording_api",
+        Sampler:     &jaegercfg.SamplerConfig{
+            Type:  jaeger.SamplerTypeConst,
+            Param: 1,
+        },
+        Reporter:    &jaegercfg.ReporterConfig{
+            LogSpans: true,
+        },
+    }
+
+    // Example logger and metrics factory. Use github.com/uber/jaeger-client-go/log
+    // and github.com/uber/jaeger-lib/metrics respectively to bind to real logging and metrics
+    // frameworks.
+    jLogger := jaegerlog.StdLogger
+    jMetricsFactory := metrics.NullFactory
+
+    // Initialize tracer with a logger and a metrics factory
+    tracer, tracingCloser, err := cfg.NewTracer(
+        jaegercfg.Logger(jLogger),
+        jaegercfg.Metrics(jMetricsFactory),
+    )
+
+	if err != nil {
+		log.Errorf("cannot create tracer: %s", err)
+	}
+
+    // Set the singleton opentracing.Tracer with the Jaeger tracer.
+    opentracing.SetGlobalTracer(tracer)
+
+    return tracingCloser
 }
 
 func (service *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.CreateAppointmentV1Request) (out *emptypb.Empty, err error) {
@@ -119,6 +152,9 @@ func (service *ServiceAPI) UpdateAppointmentV1(ctx context.Context, req *desc.Up
 
 func (service *ServiceAPI) MultiCreateAppointmentsV1(ctx context.Context, req *desc.MultiCreateAppointmentsV1Request) (out *emptypb.Empty, err error) {
   GetLogger(ctx).Infof("Got MultiCreateAppointmentsV1 request: %s", req)
+  out = &emptypb.Empty{}
+
+  parentSpan := ctx.Value(SpanKey).(opentracing.Span)
 
   if req.Appointments == nil {
     err = fmt.Errorf("request field `Appointments` is nil")
@@ -126,17 +162,36 @@ func (service *ServiceAPI) MultiCreateAppointmentsV1(ctx context.Context, req *d
     return
   }
 
+  currSlice := make([]recording.Appointment, 0, service.batchSize)
   for _, inApp := range req.Appointments {
-    app := AppointmentFromApiInput(inApp)
-    GetLogger(ctx).Infof("Try to add %v", app)
-    err := service.currSaver.Save(app)
-    if err != nil {
-      GetLogger(ctx).Errorf("Cannot Save entity: %s", err)
-      break
+    if len(currSlice) < service.batchSize {
+      currSlice = append(currSlice, AppointmentFromApiInput(inApp))
+    } else {
+      err = insertBatch(ctx, service.repository, parentSpan, currSlice)
+      if err != nil {
+        return out, err
+      }
+      currSlice = make([]recording.Appointment, 0, service.batchSize)
     }
   }
 
-  return &emptypb.Empty{}, err
+  if len(currSlice) > 0 {
+    err = insertBatch(ctx, service.repository, parentSpan, currSlice)
+  }
+
+  return out, err
+}
+
+func insertBatch(ctx context.Context, repository Repo, parentSpan opentracing.Span, entities []recording.Appointment) error {
+  tracer := opentracing.GlobalTracer()
+  childSpan := tracer.StartSpan("Batch", opentracing.ChildOf(parentSpan.Context()))
+  childSpan.LogFields(opLog.Int("batch size", len(entities)))
+  defer childSpan.Finish()
+  err := repository.AddEntities(ctx, entities)
+  if err != nil {
+    GetLogger(ctx).Errorf("Cannot add entities: %s", err)
+  }
+  return err
 }
 
 func (service *ServiceAPI) DescribeAppointmentV1(ctx context.Context, req *desc.DescribeAppointmentV1Request) (*desc.DescribeAppointmentV1Response, error) {
