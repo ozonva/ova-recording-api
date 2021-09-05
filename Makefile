@@ -9,7 +9,7 @@ build: ./cmd/ova-recording-api/main.go
 
 .PHONY: run
 run: ./cmd/ova-recording-api/main.go
-	go run ./cmd/ova-recording-api
+	go run ./cmd/ova-recording-api --config config/config.yml
 
 .PHONY: test
 test:
@@ -40,4 +40,8 @@ GENERATED_API := $(wildcard ./pkg/recording/api/*.go)
 $(GENERATED_API): api/api.proto
 	protoc -I=./ --go_out=./pkg/recording --go-grpc_out=./pkg/recording ./api/api.proto
 
-generate: $(GENERATED_API)
+GENERATED_MOCKS := ./internal/repo/mock/mock_repo.go
+$(GENERATED_MOCKS): ./internal/repo/repo.go
+	mockgen -source ./internal/repo/repo.go -destination $(GENERATED_MOCKS)
+
+generate: $(GENERATED_API) $(GENERATED_MOCKS)

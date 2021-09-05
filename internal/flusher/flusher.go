@@ -1,6 +1,7 @@
 package flusher
 
 import (
+	"context"
 	"github.com/ozonva/ova-recording-api/internal/repo"
 	"github.com/ozonva/ova-recording-api/internal/utils"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
@@ -8,7 +9,7 @@ import (
 )
 
 type Flusher interface {
-	Flush(entities []recording.Appointment) ([]recording.Appointment)
+	Flush(entities []recording.Appointment) []recording.Appointment
 }
 
 func NewFlusher(
@@ -42,7 +43,7 @@ func (f *flusher) Flush (entities []recording.Appointment) []recording.Appointme
 	currIndex := 0
 
 	for _, batch := range batches {
-		err = f.entityRepo.AddEntities(batch)
+		err = f.entityRepo.AddEntities(context.Background(), batch)
 		if err != nil {
 			log.Errorf("Cannot save to repo: %s\n", err)
 			return entities[currIndex:]

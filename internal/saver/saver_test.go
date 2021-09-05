@@ -1,6 +1,7 @@
 package saver_test
 
 import (
+	"context"
 	"fmt"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -18,8 +19,9 @@ import (
 
 var _ = Describe("Saver", func() {
 	var (
-		someRepo *mock_repo.MockRepo
 		ctrl *gomock.Controller
+		ctx context.Context
+		someRepo *mock_repo.MockRepo
 		someFlusher flusher.Flusher
 		someSaver saver.Saver
 		entities []recording.Appointment
@@ -27,9 +29,10 @@ var _ = Describe("Saver", func() {
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
+		ctx = context.Background()
 		someRepo = mock_repo.NewMockRepo(ctrl)
 		someFlusher = flusher.NewFlusher(2, someRepo)
-		someSaver = saver.NewSaver(2, someFlusher, time.Second*3)
+		someSaver = saver.NewSaver(2, someFlusher, time.Millisecond*500)
 		entities = []recording.Appointment{
 			{
 				UserID: 100,
@@ -61,19 +64,19 @@ var _ = Describe("Saver", func() {
 	Describe("Basic saving entries", func() {
 		Context("Usual case", func() {
 			It("should save all", func() {
-				someRepo.EXPECT().AddEntities(entities[:2]).Return(nil).Times(1)
-				someRepo.EXPECT().AddEntities(entities[2:]).Return(nil).Times(1)
-				someRepo.EXPECT().GetAddedCount().Return(4).Times(1)
+				someRepo.EXPECT().AddEntities(ctx, entities[:2]).Return(nil).Times(1)
+				someRepo.EXPECT().AddEntities(ctx, entities[2:]).Return(nil).Times(1)
+				someRepo.EXPECT().GetAddedCount(ctx).Return(4).Times(1)
 				for _, entity := range entities {
 					err := someSaver.Save(entity)
 					gomega.Expect(err).To(gomega.BeNil())
 				}
 
-				time.Sleep(time.Second * 5)
+				time.Sleep(time.Millisecond * 800)
 
 				someSaver.Close()
 
-				someRepo.GetAddedCount()
+				someRepo.GetAddedCount(ctx)
 
 			})
 		})
@@ -82,12 +85,14 @@ var _ = Describe("Saver", func() {
 
 var _ = Describe("Saver Multi thread", func() {
 	var (
+		ctx context.Context
 		someRepo repo.Repo
 		someFlusher flusher.Flusher
 		someSaver saver.Saver
 	)
 
 	BeforeEach(func() {
+		ctx = context.Background()
 		someRepo = repo.NewDummyRepo()
 		someFlusher = flusher.NewFlusher(10, someRepo)
 		someSaver = saver.NewSaver(20, someFlusher, time.Second*5)
@@ -117,7 +122,7 @@ var _ = Describe("Saver Multi thread", func() {
 
 				someSaver.Close()
 
-				gomega.Expect(someRepo.GetAddedCount()).To(gomega.Equal(numEntitiesPerGoroutine*numGoroutines))
+				gomega.Expect(someRepo.GetAddedCount(ctx)).To(gomega.Equal(numEntitiesPerGoroutine*numGoroutines))
 			})
 		})
 	})
