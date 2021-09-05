@@ -8,6 +8,7 @@ import (
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
 	api "github.com/ozonva/ova-recording-api/internal/app/recording"
+	"github.com/ozonva/ova-recording-api/internal/kafka_client"
 	"github.com/ozonva/ova-recording-api/internal/repo"
 	desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
 	log "github.com/sirupsen/logrus"
@@ -66,11 +67,22 @@ func run() error {
 	defer func(db *sqlx.DB) {
 		err := db.Close()
 		if err != nil {
-
+			log.Errorf("cannot close db connection: %s", err)
 		}
 	}(db)
 
 	currRepo := repo.NewRepo(db)
+	kfkClient := kafka_client.NewKafkaClient("ova_recording_server")
+	err = kfkClient.Connect(context.Background(), "localhost:9092", "appointments", 0)
+	if err != nil {
+		log.Fatalf("Cannot connect to Kafka: %s", err)
+	}
+	defer func(kfkClient kafka_client.Client) {
+		err := kfkClient.Close()
+		if err != nil {
+			log.Errorf("cannot close Kafka client: %s", err)
+		}
+	}(kfkClient)
 
 	server = grpc.NewServer(
 		grpc.UnaryInterceptor(
@@ -84,6 +96,7 @@ func run() error {
 	desc.RegisterRecordingServiceServer(server, api.NewRecordingServiceAPI(
 		currRepo,
 		cfg.ChunkSize,
+		kfkClient,
 	))
 
 	tracingCloser := api.SetupTracing()

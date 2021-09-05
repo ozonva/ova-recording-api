@@ -11,7 +11,7 @@ import (
 )
 
 type Repo interface {
-	AddEntities(ctx context.Context, entities []recording.Appointment) error
+	AddEntities(ctx context.Context, entities []recording.Appointment) ([]uint64, error)
 	UpdateEntity(ctx context.Context,
 				entityId uint64,
 				userId uint64,
@@ -39,7 +39,7 @@ type repo struct {
 	m sync.Mutex
 }
 
-func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment) error {
+func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment) (out []uint64, err error) {
 	ib := sqlbuilder.PostgreSQL.NewInsertBuilder()
 	ib.InsertInto("appointments")
 	ib.Cols("user_id", "name", "description", "start_time", "end_time")
@@ -48,22 +48,36 @@ func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment
 	}
 	sql, args := ib.Build()
 
-	res, err := r.db.ExecContext(ctx, sql, args...)
+	sql = sql + "RETURNING appointment_id"
+
+	res, err := r.db.QueryContext(ctx, sql, args...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	addedCount, err := res.RowsAffected()
+	addedCount := 0
+	for res.Next() {
+		var currId uint64
+		err = res.Scan(&currId)
+		if err != nil {
+			log.Warnf("cannot get returned id: %s", err)
+			return nil, nil
+		}
+		out = append(out, currId)
+		addedCount++
+	}
+
+	err = res.Close()
 	if err != nil {
-		log.Warnf("cannot get affected rows: %s", err)
-		return nil
+		log.Warnf("cannot close result set: %s", err)
+		return nil, nil
 	}
 
 	r.m.Lock()
-	r.addedCount += int(addedCount)
+	r.addedCount += addedCount
 	r.m.Unlock()
 
-	return nil
+	return out, nil
 }
 
 func (r *repo) UpdateEntity(ctx context.Context,
@@ -165,7 +179,7 @@ type dummyRepo struct {
 	m sync.Mutex
 }
 
-func (r *dummyRepo) AddEntities(ctx context.Context, entities []recording.Appointment) error {
+func (r *dummyRepo) AddEntities(ctx context.Context, entities []recording.Appointment) ([]uint64, error) {
 	r.m.Lock()
 	defer r.m.Unlock()
 	r.addedCount += len(entities)
@@ -173,7 +187,7 @@ func (r *dummyRepo) AddEntities(ctx context.Context, entities []recording.Appoin
 		log.Infof("dummyRepo: Add entity %s\n", entity)
 
 	}
-	return nil
+	return nil, nil
 }
 
 func (r *dummyRepo) UpdateEntity(ctx context.Context,

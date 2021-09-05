@@ -5,14 +5,16 @@ import (
   "fmt"
   "github.com/opentracing/opentracing-go"
   opLog "github.com/opentracing/opentracing-go/log"
-  "github.com/ozonva/ova-recording-api/internal/repo"
+  "github.com/ozonva/ova-recording-api/internal/kafka_client"
   "github.com/ozonva/ova-recording-api/pkg/recording"
   desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
+  kafkaproto "github.com/ozonva/ova-recording-api/pkg/recording/kafka"
   log "github.com/sirupsen/logrus"
   "github.com/uber/jaeger-client-go"
   jaegercfg "github.com/uber/jaeger-client-go/config"
   jaegerlog "github.com/uber/jaeger-client-go/log"
   "github.com/uber/jaeger-lib/metrics"
+  "google.golang.org/protobuf/proto"
   "google.golang.org/protobuf/types/known/emptypb"
   "google.golang.org/protobuf/types/known/timestamppb"
   "io"
@@ -20,7 +22,7 @@ import (
 )
 
 type Repo interface {
-	AddEntities(ctx context.Context, entities []recording.Appointment) error
+	AddEntities(ctx context.Context, entities []recording.Appointment) ([]uint64, error)
     UpdateEntity(ctx context.Context,
 				entityId uint64,
 				userId uint64,
@@ -38,12 +40,14 @@ type ServiceAPI struct {
   desc.UnimplementedRecordingServiceServer
   repository Repo
   batchSize int
+  kfkClient kafka_client.Client
 }
 
-func NewRecordingServiceAPI(inRepo repo.Repo, batchSize int) desc.RecordingServiceServer {
+func NewRecordingServiceAPI(inRepo Repo, batchSize int, client kafka_client.Client) desc.RecordingServiceServer {
   api := &ServiceAPI{
     repository: inRepo,
     batchSize: batchSize,
+    kfkClient: client,
   }
   return api
 }
@@ -113,6 +117,43 @@ func SetupTracing() io.Closer {
     return tracingCloser
 }
 
+func (service *ServiceAPI) sendMessageToKafka(m proto.Message) error {
+  msg, err := proto.Marshal(m)
+  if err != nil {
+    return err
+  }
+
+  err = service.kfkClient.SendMessage(msg)
+  return err
+}
+
+func (service *ServiceAPI) sendCreatedEvent(entityId uint64) error {
+  event := kafkaproto.KafkaMessage{
+    Kind: kafkaproto.KafkaMessage_CREATED,
+    Producer: service.kfkClient.Name(),
+    Body: &kafkaproto.KafkaMessage_Created{Created: &kafkaproto.AppointmentCreatedV1{AppointmentId: entityId}}}
+
+  return service.sendMessageToKafka(&event)
+}
+
+func (service *ServiceAPI) sendUpdatedEvent(entityId uint64) error {
+  event := kafkaproto.KafkaMessage{
+    Kind: kafkaproto.KafkaMessage_UPDATED,
+    Producer: service.kfkClient.Name(),
+    Body: &kafkaproto.KafkaMessage_Updated{Updated: &kafkaproto.AppointmentUpdatedV1{AppointmentId: entityId}}}
+
+  return service.sendMessageToKafka(&event)
+}
+
+func (service *ServiceAPI) sendDeletedEvent(entityId uint64) error {
+  event := kafkaproto.KafkaMessage{
+    Kind: kafkaproto.KafkaMessage_DELETED,
+    Producer: service.kfkClient.Name(),
+    Body: &kafkaproto.KafkaMessage_Deleted{Deleted: &kafkaproto.AppointmentDeletedV1{AppointmentId: entityId}}}
+
+  return service.sendMessageToKafka(&event)
+}
+
 func (service *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.CreateAppointmentV1Request) (out *emptypb.Empty, err error) {
   GetLogger(ctx).Infof("Got CreateAppointmentV1 request: %s", req)
 
@@ -126,9 +167,17 @@ func (service *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.Cr
 
   GetLogger(ctx).Infof("Try to add %v", []recording.Appointment{app})
 
-  err = service.repository.AddEntities(ctx, []recording.Appointment{app})
+  res, err := service.repository.AddEntities(ctx, []recording.Appointment{app})
   if err != nil {
     GetLogger(ctx).Errorf("Cannot add entity: %s", err)
+  }
+
+  GetLogger(ctx).Infof("Added entity with id %d", res[0])
+
+  err = service.sendCreatedEvent(res[0])
+  if err != nil {
+    GetLogger(ctx).Warnf("Cannot send CUD event: %s", err)
+    return out, err
   }
 
   return &emptypb.Empty{}, err
@@ -145,6 +194,12 @@ func (service *ServiceAPI) UpdateAppointmentV1(ctx context.Context, req *desc.Up
 
   if err != nil {
     GetLogger(ctx).Errorf("Cannot update entity: %s", err)
+    return out, err
+  }
+
+  err = service.sendUpdatedEvent(req.AppointmentId)
+  if err != nil {
+    GetLogger(ctx).Warnf("Cannot send CUD event: %s", err)
   }
 
   return &emptypb.Empty{}, err
@@ -167,7 +222,7 @@ func (service *ServiceAPI) MultiCreateAppointmentsV1(ctx context.Context, req *d
     if len(currSlice) < service.batchSize {
       currSlice = append(currSlice, AppointmentFromApiInput(inApp))
     } else {
-      err = insertBatch(ctx, service.repository, parentSpan, currSlice)
+      err = service.insertBatch(ctx, service.repository, parentSpan, currSlice)
       if err != nil {
         return out, err
       }
@@ -176,21 +231,30 @@ func (service *ServiceAPI) MultiCreateAppointmentsV1(ctx context.Context, req *d
   }
 
   if len(currSlice) > 0 {
-    err = insertBatch(ctx, service.repository, parentSpan, currSlice)
+    err = service.insertBatch(ctx, service.repository, parentSpan, currSlice)
   }
 
   return out, err
 }
 
-func insertBatch(ctx context.Context, repository Repo, parentSpan opentracing.Span, entities []recording.Appointment) error {
+func (service *ServiceAPI) insertBatch(ctx context.Context, repository Repo, parentSpan opentracing.Span, entities []recording.Appointment) error {
   tracer := opentracing.GlobalTracer()
   childSpan := tracer.StartSpan("Batch", opentracing.ChildOf(parentSpan.Context()))
   childSpan.LogFields(opLog.Int("batch size", len(entities)))
   defer childSpan.Finish()
-  err := repository.AddEntities(ctx, entities)
+  res, err := repository.AddEntities(ctx, entities)
   if err != nil {
     GetLogger(ctx).Errorf("Cannot add entities: %s", err)
+    return err
   }
+
+  for _, entityId := range res {
+    err = service.sendCreatedEvent(entityId)
+    if err != nil {
+      GetLogger(ctx).Warnf("Cannot send CUD event: %s", err)
+    }
+  }
+
   return err
 }
 
@@ -230,6 +294,12 @@ func (service *ServiceAPI) RemoveAppointmentV1(ctx context.Context, req *desc.Re
   err := service.repository.RemoveEntity(ctx, req.AppointmentId)
   if err != nil {
     GetLogger(ctx).Errorf("Cannot remove entity %d: %s", req.AppointmentId, err)
+    return &emptypb.Empty{}, err
+  }
+
+  err = service.sendDeletedEvent(req.AppointmentId)
+  if err != nil {
+    GetLogger(ctx).Warnf("Cannot send CUD event: %s", err)
   }
 
   return &emptypb.Empty{}, err

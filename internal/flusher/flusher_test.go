@@ -57,8 +57,8 @@ var _ = Describe("Flusher", func() {
 	Describe("Flushing entries", func() {
 		Context("ok scenario", func() {
 			It("should flush all", func() {
-				someRepo.EXPECT().AddEntities(ctx, entities[:2]).Return(nil).Times(1)
-				someRepo.EXPECT().AddEntities(ctx, entities[2:]).Return(nil).Times(1)
+				someRepo.EXPECT().AddEntities(ctx, entities[:2]).Return([]uint64{1,2}, nil).Times(1)
+				someRepo.EXPECT().AddEntities(ctx, entities[2:]).Return([]uint64{1,2}, nil).Times(1)
 
 				unhandled := someFlusher.Flush(entities)
 				gomega.Expect(unhandled).To(gomega.BeNil())
@@ -69,8 +69,8 @@ var _ = Describe("Flusher", func() {
 		})
 		Context("fail scenario", func() {
 			It("should return unhandled entities", func() {
-				someRepo.EXPECT().AddEntities(ctx, entities[:2]).Return(nil).Times(1)
-				someRepo.EXPECT().AddEntities(ctx, entities[2:]).Return(errors.New("repoError")).Times(1)
+				someRepo.EXPECT().AddEntities(ctx, entities[:2]).Return([]uint64{1,2}, nil).Times(1)
+				someRepo.EXPECT().AddEntities(ctx, entities[2:]).Return(nil, errors.New("repoError")).Times(1)
 				unhandled := someFlusher.Flush(entities)
 				gomega.Expect(unhandled).To(gomega.Equal(entities[2:]))
 			})

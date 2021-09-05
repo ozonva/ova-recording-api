@@ -79,10 +79,11 @@ var _ = Describe("Repo", func() {
 	Context("general", func() {
 
 		It("Add entity", func() {
-			err := testRepo.AddEntities(
+			res, err := testRepo.AddEntities(
 				context.Background(),
 				[]recording.Appointment{additionalEntry})
 			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(res[0]).To(gomega.BeEquivalentTo(additionalEntry.AppointmentID))
 		})
 
 		It("Update entity", func() {
@@ -112,7 +113,7 @@ var _ = Describe("Repo", func() {
 		})
 
 		It("List entities", func() {
-			err := testRepo.AddEntities(context.Background(), []recording.Appointment{additionalEntry})
+			_, err := testRepo.AddEntities(context.Background(), []recording.Appointment{additionalEntry})
 			gomega.Expect(err).To(gomega.BeNil())
 
 			res, err := testRepo.ListEntities(
