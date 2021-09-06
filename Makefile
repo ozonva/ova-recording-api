@@ -49,4 +49,7 @@ GENERATED_MOCKS_KFK := ./internal/kafka_client/mock/mock_kafka_client.go
 $(GENERATED_MOCKS_KFK): ./internal/kafka_client/kafka_client.go
 	mockgen -source ./internal/kafka_client/kafka_client.go -destination $(GENERATED_MOCKS_KFK)
 
-generate: $(GENERATED_API) $(GENERATED_MOCKS) $(GENERATED_MOCKS_KFK)
+GENERATED_MOCKS_METRICS := ./internal/app/metrics/mock/mock_metrics.go
+$(GENERATED_MOCKS_METRICS): ./internal/app/metrics/metrics.go
+	mockgen -source ./internal/app/metrics/metrics.go -destination $(GENERATED_MOCKS_METRICS)
+generate: $(GENERATED_API) $(GENERATED_MOCKS) $(GENERATED_MOCKS_KFK) $(GENERATED_MOCKS_METRICS)

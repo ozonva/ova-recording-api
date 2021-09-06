@@ -42,18 +42,31 @@ type Client interface {
 	Close() error
 }
 
+type Metrics interface {
+	IncSuccessCreateAppointmentCounter()
+	IncFailCreateAppointmentCounter()
+	IncSuccessMultiCreateAppointmentCounter()
+	IncFailMultiCreateAppointmentCounter()
+	IncSuccessUpdateAppointmentCounter()
+	IncFailUpdateAppointmentCounter()
+	IncSuccessRemoveAppointmentCounter()
+	IncFailRemoveAppointmentCounter()
+}
+
 type ServiceAPI struct {
   desc.UnimplementedRecordingServiceServer
   repository Repo
   batchSize int
   kfkClient Client
+  metrics Metrics
 }
 
-func NewRecordingServiceAPI(inRepo Repo, batchSize int, client Client) desc.RecordingServiceServer {
+func NewRecordingServiceAPI(inRepo Repo, batchSize int, client Client, metrics Metrics) desc.RecordingServiceServer {
   api := &ServiceAPI{
     repository: inRepo,
     batchSize: batchSize,
     kfkClient: client,
+    metrics: metrics,
   }
   return api
 }
@@ -123,45 +136,16 @@ func SetupTracing() io.Closer {
     return tracingCloser
 }
 
-func (service *ServiceAPI) sendMessageToKafka(m proto.Message) error {
-  msg, err := proto.Marshal(m)
-  if err != nil {
-    return err
-  }
-
-  err = service.kfkClient.SendMessage(msg)
-  return err
-}
-
-func (service *ServiceAPI) sendCreatedEvent(entityId uint64) error {
-  event := kafkaproto.KafkaMessage{
-    Kind: kafkaproto.KafkaMessage_CREATED,
-    Producer: service.kfkClient.Name(),
-    Body: &kafkaproto.KafkaMessage_Created{Created: &kafkaproto.AppointmentCreatedV1{AppointmentId: entityId}}}
-
-  return service.sendMessageToKafka(&event)
-}
-
-func (service *ServiceAPI) sendUpdatedEvent(entityId uint64) error {
-  event := kafkaproto.KafkaMessage{
-    Kind: kafkaproto.KafkaMessage_UPDATED,
-    Producer: service.kfkClient.Name(),
-    Body: &kafkaproto.KafkaMessage_Updated{Updated: &kafkaproto.AppointmentUpdatedV1{AppointmentId: entityId}}}
-
-  return service.sendMessageToKafka(&event)
-}
-
-func (service *ServiceAPI) sendDeletedEvent(entityId uint64) error {
-  event := kafkaproto.KafkaMessage{
-    Kind: kafkaproto.KafkaMessage_DELETED,
-    Producer: service.kfkClient.Name(),
-    Body: &kafkaproto.KafkaMessage_Deleted{Deleted: &kafkaproto.AppointmentDeletedV1{AppointmentId: entityId}}}
-
-  return service.sendMessageToKafka(&event)
-}
-
 func (service *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.CreateAppointmentV1Request) (out *emptypb.Empty, err error) {
   GetLogger(ctx).Infof("Got CreateAppointmentV1 request: %s", req)
+
+  defer func() {
+    if err != nil {
+      service.metrics.IncFailCreateAppointmentCounter()
+    } else {
+      service.metrics.IncSuccessCreateAppointmentCounter()
+    }
+  }()
 
   if req.Appointment == nil {
     err = fmt.Errorf("request field `Appointment` is nil")
@@ -191,6 +175,14 @@ func (service *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.Cr
 
 func (service *ServiceAPI) UpdateAppointmentV1(ctx context.Context, req *desc.UpdateAppointmentV1Request) (out *emptypb.Empty, err error) {
   GetLogger(ctx).Infof("Got UpdateAppointmentV1 request: %s", req)
+
+  defer func() {
+    if err != nil {
+      service.metrics.IncFailUpdateAppointmentCounter()
+    } else {
+      service.metrics.IncSuccessUpdateAppointmentCounter()
+    }
+  }()
 
   if req.Appointment == nil {
     GetLogger(ctx).Error("request field `Appointment` is nil")
@@ -226,6 +218,14 @@ func (service *ServiceAPI) UpdateAppointmentV1(ctx context.Context, req *desc.Up
 func (service *ServiceAPI) MultiCreateAppointmentsV1(ctx context.Context, req *desc.MultiCreateAppointmentsV1Request) (out *emptypb.Empty, err error) {
   GetLogger(ctx).Infof("Got MultiCreateAppointmentsV1 request: %s", req)
   out = &emptypb.Empty{}
+
+  defer func() {
+    if err != nil {
+      service.metrics.IncFailMultiCreateAppointmentCounter()
+    } else {
+      service.metrics.IncSuccessMultiCreateAppointmentCounter()
+    }
+  }()
 
   parentSpan := ctx.Value(SpanKey).(opentracing.Span)
 
@@ -305,10 +305,18 @@ func (service *ServiceAPI) ListAppointmentsV1(ctx context.Context, req *desc.Lis
   return out, nil
 }
 
-func (service *ServiceAPI) RemoveAppointmentV1(ctx context.Context, req *desc.RemoveAppointmentV1Request) (*emptypb.Empty, error) {
+func (service *ServiceAPI) RemoveAppointmentV1(ctx context.Context, req *desc.RemoveAppointmentV1Request) (out *emptypb.Empty, err error) {
   GetLogger(ctx).Infof("Got RemoveAppointmentV1 request: %s", req)
 
-  err := service.repository.RemoveEntity(ctx, req.AppointmentId)
+  defer func() {
+    if err != nil {
+      service.metrics.IncFailRemoveAppointmentCounter()
+    } else {
+      service.metrics.IncSuccessRemoveAppointmentCounter()
+    }
+  }()
+
+  err = service.repository.RemoveEntity(ctx, req.AppointmentId)
   if err != nil {
     GetLogger(ctx).Errorf("Cannot remove entity %d: %s", req.AppointmentId, err)
     return &emptypb.Empty{}, err
@@ -320,4 +328,41 @@ func (service *ServiceAPI) RemoveAppointmentV1(ctx context.Context, req *desc.Re
   }
 
   return &emptypb.Empty{}, err
+}
+
+func (service *ServiceAPI) sendMessageToKafka(m proto.Message) error {
+  msg, err := proto.Marshal(m)
+  if err != nil {
+    return err
+  }
+
+  err = service.kfkClient.SendMessage(msg)
+  return err
+}
+
+func (service *ServiceAPI) sendCreatedEvent(entityId uint64) error {
+  event := kafkaproto.KafkaMessage{
+    Kind: kafkaproto.KafkaMessage_CREATED,
+    Producer: service.kfkClient.Name(),
+    Body: &kafkaproto.KafkaMessage_Created{Created: &kafkaproto.AppointmentCreatedV1{AppointmentId: entityId}}}
+
+  return service.sendMessageToKafka(&event)
+}
+
+func (service *ServiceAPI) sendUpdatedEvent(entityId uint64) error {
+  event := kafkaproto.KafkaMessage{
+    Kind: kafkaproto.KafkaMessage_UPDATED,
+    Producer: service.kfkClient.Name(),
+    Body: &kafkaproto.KafkaMessage_Updated{Updated: &kafkaproto.AppointmentUpdatedV1{AppointmentId: entityId}}}
+
+  return service.sendMessageToKafka(&event)
+}
+
+func (service *ServiceAPI) sendDeletedEvent(entityId uint64) error {
+  event := kafkaproto.KafkaMessage{
+    Kind: kafkaproto.KafkaMessage_DELETED,
+    Producer: service.kfkClient.Name(),
+    Body: &kafkaproto.KafkaMessage_Deleted{Deleted: &kafkaproto.AppointmentDeletedV1{AppointmentId: entityId}}}
+
+  return service.sendMessageToKafka(&event)
 }

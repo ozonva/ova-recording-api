@@ -3,25 +3,28 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
+	"github.com/ozonva/ova-recording-api/internal/app/metrics"
 	api "github.com/ozonva/ova-recording-api/internal/app/recording"
 	"github.com/ozonva/ova-recording-api/internal/kafka_client"
 	"github.com/ozonva/ova-recording-api/internal/repo"
 	desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"io"
 	"net"
+	"net/http"
 	"time"
 )
 
 const (
   grpcPort = ":8888"
   grpcServerEndpoint = "localhost:8888"
+  prometheusMetricsPort = ":8081"
 )
 
 var (
@@ -51,6 +54,8 @@ func main() {
 }
 
 func run() error {
+	go startPrometheusMetricsEndpoint()
+
 	listen, err := net.Listen("tcp", grpcPort)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -84,6 +89,8 @@ func run() error {
 		}
 	}(kfkClient)
 
+	prometheusMetrics := metrics.NewApiMetrics()
+
 	server = grpc.NewServer(
 		grpc.UnaryInterceptor(
 			middleware.ChainUnaryServer(
@@ -97,7 +104,10 @@ func run() error {
 		currRepo,
 		cfg.ChunkSize,
 		kfkClient,
+		prometheusMetrics,
 	))
+
+	grpc_prometheus.Register(server)
 
 	tracingCloser := api.SetupTracing()
 	defer func(tracingCloser io.Closer) {
@@ -116,6 +126,13 @@ func run() error {
 	log.Info("Shutting down...")
 
 	return nil
+}
+
+func startPrometheusMetricsEndpoint() {
+	http.Handle("/metrics", promhttp.Handler())
+	if err := http.ListenAndServe(prometheusMetricsPort, nil); err != nil {
+		log.Errorf("Failed to start listen to metric requests, error %s", err)
+	}
 }
 
 func runClient() {
@@ -139,34 +156,19 @@ func runClient() {
 	log.Info("Try to make requests")
 
 	a := desc.InAppointmentV1{Name: "Some hello name"}
-	_, err = client.CreateAppointmentV1(ctx, &desc.CreateAppointmentV1Request{Appointment: &a})
-	if err != nil {
-		log.Errorf("cannot create appointment: %s", err)
-		return
-	}
-	resp, err := client.ListAppointmentsV1(ctx, &desc.ListAppointmentsV1Request{Offset: 0, Limit: 100})
-	if err != nil {
-		log.Errorf("cannot list appointments: %s", err)
-		return
-	}
-
-	log.Infof("List: %v", resp)
-
-	req := &desc.MultiCreateAppointmentsV1Request{}
 	for i := 0; i < 100; i++ {
-		req.Appointments = append(req.Appointments, &desc.InAppointmentV1{
-			UserId: uint64(i),
-			Name: fmt.Sprintf("Name %d", i),
-			StartTime: timestamppb.New(time.Now()),
-			EndTime: timestamppb.New(time.Now()),
-		})
-	}
-
-	_, err = client.MultiCreateAppointmentsV1(ctx, req)
-
-	if err != nil {
-		log.Errorf("cannot multi add appointments: %s", err)
-		return
+		_, err = client.CreateAppointmentV1(ctx, &desc.CreateAppointmentV1Request{Appointment: &a})
+		if err != nil {
+			log.Errorf("cannot create appointment: %s", err)
+			return
+		}
+		resp, err := client.ListAppointmentsV1(ctx, &desc.ListAppointmentsV1Request{Offset: 0, Limit: 100})
+		if err != nil {
+			log.Errorf("cannot list appointments: %s", err)
+			return
+		}
+		log.Infof("List: %v", resp)
+		time.Sleep(time.Second*5)
 	}
 
 	server.GracefulStop()

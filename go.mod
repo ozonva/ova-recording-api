@@ -9,6 +9,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
+	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/huandu/go-sqlbuilder v1.12.2
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgx v3.6.2+incompatible
@@ -17,9 +18,11 @@ require (
 	github.com/onsi/gomega v1.15.0
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pressly/goose/v3 v3.1.0
+	github.com/prometheus/client_golang v1.11.0 // indirect
 	github.com/segmentio/kafka-go v0.4.17 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1
+	github.com/slok/go-http-metrics v0.9.0 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/uber/jaeger-client-go v2.29.1+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
@@ -30,6 +33,5 @@ require (
 	google.golang.org/genproto v0.0.0-20210824181836-a4879c3d0e89 // indirect
 	google.golang.org/grpc v1.40.0
 	google.golang.org/protobuf v1.27.1
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 )

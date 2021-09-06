@@ -1,16 +1,50 @@
 version: '3.1'
 services:
+#  ova-recording-api:
+#    build: .
+#    restart: "no"
+#    depends_on:
+#      - jaeger
+#      - kafka
+#    networks:
+#      - ova-recording-api-network
+#    ports:
+#      - "8080:8080"
+#      - "8081:8081"
+
+#  postgres:
+#    build:
+#      dockerfile: Dockerfile
+#      context: ./containers/postgres
+#    restart: unless-stopped
+#    networks:
+#      - ova-recording-api-network
+#    volumes:
+#      - /var/lib/postgresql/data
+#    ports:
+#      - "5434:5432"
+#    environment:
+#      POSTGRES_USER: postgres
+#      POSTGRES_PASSWORD: postgres
+#      POSTGRES_DB: appointments
+
   jaeger:
     image: 'jaegertracing/all-in-one:latest'
     ports:
       - '6831:6831/udp'
       - '16686:16686'
+#    networks:
+#      - ova-recording-api-network
+
   zookeeper:
     image: 'bitnami/zookeeper:latest'
     ports:
       - '2181:2181'
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
+#    networks:
+#      - ova-recording-api-network
+
   kafka:
     image: 'bitnami/kafka:latest'
     ports:
@@ -21,5 +55,40 @@ services:
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
       - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
+#    networks:
+#      - ova-recording-api-network
     depends_on:
       - zookeeper
+
+#  prometheus:
+#    image: prom/prometheus:v2.28.0
+#    volumes:
+#      - ./containers/prometheus/:/etc/prometheus/
+#    command:
+#      - '--config.file=/etc/prometheus/prometheus.yml'
+#      - '--storage.tsdb.path=/prometheus'
+#      - '--web.console.libraries=/etc/prometheus/console_libraries'
+#      - '--web.console.templates=/etc/prometheus/consoles'
+#      - '--storage.tsdb.retention.time=7d'
+#      - '--web.enable-lifecycle'
+#    restart: "no"
+#    networks:
+#      - ova-recording-api-network
+#    ports:
+#      - "9090:9090"
+#
+#  grafana:
+#    image: grafana/grafana:8.0.3
+#    volumes:
+#      - ./containers/grafana/provisioning:/etc/grafana/provisioning
+#    env_file:
+#      - containers/grafana/grafana.env
+#    networks:
+#      - ova-recording-api-network
+#    restart: "no"
+#    ports:
+#      - "3000:3000"
+
+#networks:
+#  ova-recording-api-network:
+#    driver: bridge
