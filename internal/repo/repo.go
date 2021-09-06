@@ -55,7 +55,6 @@ func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment
 		return nil, err
 	}
 
-	addedCount := 0
 	for res.Next() {
 		var currId uint64
 		err = res.Scan(&currId)
@@ -64,7 +63,6 @@ func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment
 			return nil, nil
 		}
 		out = append(out, currId)
-		addedCount++
 	}
 
 	err = res.Close()
@@ -74,7 +72,7 @@ func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment
 	}
 
 	r.m.Lock()
-	r.addedCount += addedCount
+	r.addedCount += len(out)
 	r.m.Unlock()
 
 	return out, nil

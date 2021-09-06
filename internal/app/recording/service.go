@@ -5,7 +5,6 @@ import (
   "fmt"
   "github.com/opentracing/opentracing-go"
   opLog "github.com/opentracing/opentracing-go/log"
-  "github.com/ozonva/ova-recording-api/internal/kafka_client"
   "github.com/ozonva/ova-recording-api/pkg/recording"
   desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
   kafkaproto "github.com/ozonva/ova-recording-api/pkg/recording/kafka"
@@ -36,14 +35,21 @@ type Repo interface {
 	GetAddedCount(ctx context.Context) int
 }
 
+type Client interface {
+	Name() string
+	Connect(ctx context.Context, address string, topic string, partition int) error
+	SendMessage(msg []byte) error
+	Close() error
+}
+
 type ServiceAPI struct {
   desc.UnimplementedRecordingServiceServer
   repository Repo
   batchSize int
-  kfkClient kafka_client.Client
+  kfkClient Client
 }
 
-func NewRecordingServiceAPI(inRepo Repo, batchSize int, client kafka_client.Client) desc.RecordingServiceServer {
+func NewRecordingServiceAPI(inRepo Repo, batchSize int, client Client) desc.RecordingServiceServer {
   api := &ServiceAPI{
     repository: inRepo,
     batchSize: batchSize,
@@ -186,10 +192,22 @@ func (service *ServiceAPI) CreateAppointmentV1(ctx context.Context, req *desc.Cr
 func (service *ServiceAPI) UpdateAppointmentV1(ctx context.Context, req *desc.UpdateAppointmentV1Request) (out *emptypb.Empty, err error) {
   GetLogger(ctx).Infof("Got UpdateAppointmentV1 request: %s", req)
 
+  if req.Appointment == nil {
+    GetLogger(ctx).Error("request field `Appointment` is nil")
+    return
+  }
+
+  if req.Appointment.StartTime == nil {
+    req.Appointment.StartTime = timestamppb.New(time.Time{})
+  }
+  if req.Appointment.EndTime == nil {
+    req.Appointment.EndTime = timestamppb.New(time.Time{})
+  }
+
   err = service.repository.UpdateEntity(ctx,
-    req.AppointmentId, req.UserId,
-    req.Name, req.Description,
-    req.StartTime.AsTime(), req.EndTime.AsTime(),
+    req.Appointment.AppointmentId, req.Appointment.UserId,
+    req.Appointment.Name, req.Appointment.Description,
+    req.Appointment.StartTime.AsTime(), req.Appointment.EndTime.AsTime(),
   )
 
   if err != nil {
@@ -197,7 +215,7 @@ func (service *ServiceAPI) UpdateAppointmentV1(ctx context.Context, req *desc.Up
     return out, err
   }
 
-  err = service.sendUpdatedEvent(req.AppointmentId)
+  err = service.sendUpdatedEvent(req.Appointment.AppointmentId)
   if err != nil {
     GetLogger(ctx).Warnf("Cannot send CUD event: %s", err)
   }
@@ -212,8 +230,7 @@ func (service *ServiceAPI) MultiCreateAppointmentsV1(ctx context.Context, req *d
   parentSpan := ctx.Value(SpanKey).(opentracing.Span)
 
   if req.Appointments == nil {
-    err = fmt.Errorf("request field `Appointments` is nil")
-    GetLogger(ctx).Error(err)
+    GetLogger(ctx).Error("request field `Appointments` is nil")
     return
   }
 

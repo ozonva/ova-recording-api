@@ -29,12 +29,7 @@ message CreateAppointmentV1Request {
 }
 
 message UpdateAppointmentV1Request {
-  uint64 appointment_id = 1;
-  uint64 user_id = 2;
-  string name = 3;
-  string description = 4;
-  google.protobuf.Timestamp start_time = 5;
-  google.protobuf.Timestamp end_time = 6;
+  OutAppointmentV1 appointment = 1;
 }
 
 message MultiCreateAppointmentsV1Request {

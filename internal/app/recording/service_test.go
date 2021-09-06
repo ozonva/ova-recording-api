@@ -87,12 +87,7 @@ var _ = Describe("Service", func() {
 			kfkClient.EXPECT().SendMessage(gomock.Any()).Return(nil).Times(1)
 
 			_, err := srv.UpdateAppointmentV1(ctx, &desc.UpdateAppointmentV1Request{
-				AppointmentId: entity.AppointmentID,
-				UserId: entity.UserID,
-				Name: entity.Name,
-				Description: entity.Description,
-				StartTime: timestamppb.New(entity.StartTime),
-				EndTime: timestamppb.New(entity.EndTime),
+				Appointment: api.AppointmentToApiOutput(&entity),
 			})
 
 			Expect(err).To(BeNil())
