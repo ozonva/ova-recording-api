@@ -168,6 +168,11 @@ func runClient() {
 			return
 		}
 		log.Infof("List: %v", resp)
+
+		_, err = client.UpdateAppointmentV1(ctx, &desc.UpdateAppointmentV1Request{Appointment: &desc.OutAppointmentV1{AppointmentId: uint64(i),Name: "updated name"}})
+		if err != nil {
+			log.Infof("cannot update entity %d", i)
+		}
 		time.Sleep(time.Second*5)
 	}
 
