@@ -22,13 +22,7 @@ import (
 
 type Repo interface {
 	AddEntities(ctx context.Context, entities []recording.Appointment) ([]uint64, error)
-    UpdateEntity(ctx context.Context,
-				entityId uint64,
-				userId uint64,
-				name string,
-				description string,
-				startTime time.Time,
-				endTime time.Time) error
+    UpdateEntity(ctx context.Context, app recording.Appointment) error
     ListEntities(ctx context.Context, limit, offset uint64) ([]recording.Appointment, error)
     DescribeEntity(ctx context.Context, entityId uint64) (*recording.Appointment, error)
 	RemoveEntity(ctx context.Context, entityId uint64) error
@@ -99,6 +93,17 @@ func AppointmentToApiOutput (appointment *recording.Appointment) *desc.OutAppoin
     Description: appointment.Description,
     StartTime: timestamppb.New(appointment.StartTime),
     EndTime: timestamppb.New(appointment.EndTime),
+  }
+}
+
+func AppointmentFromApiOutput (appointment *desc.OutAppointmentV1) recording.Appointment {
+  return recording.Appointment{
+    AppointmentID: appointment.AppointmentId,
+    UserID: appointment.UserId,
+    Name: appointment.Name,
+    Description: appointment.Description,
+    StartTime: appointment.StartTime.AsTime(),
+    EndTime: appointment.EndTime.AsTime(),
   }
 }
 
@@ -196,12 +201,7 @@ func (service *ServiceAPI) UpdateAppointmentV1(ctx context.Context, req *desc.Up
     req.Appointment.EndTime = timestamppb.New(time.Time{})
   }
 
-  err = service.repository.UpdateEntity(ctx,
-    req.Appointment.AppointmentId, req.Appointment.UserId,
-    req.Appointment.Name, req.Appointment.Description,
-    req.Appointment.StartTime.AsTime(), req.Appointment.EndTime.AsTime(),
-  )
-
+  err = service.repository.UpdateEntity(ctx, AppointmentFromApiOutput(req.Appointment))
   if err != nil {
     GetLogger(ctx).Errorf("Cannot update entity: %s", err)
     return out, err
@@ -227,8 +227,6 @@ func (service *ServiceAPI) MultiCreateAppointmentsV1(ctx context.Context, req *d
     }
   }()
 
-  parentSpan := ctx.Value(SpanKey).(opentracing.Span)
-
   if req.Appointments == nil {
     GetLogger(ctx).Error("request field `Appointments` is nil")
     return
@@ -239,7 +237,8 @@ func (service *ServiceAPI) MultiCreateAppointmentsV1(ctx context.Context, req *d
     if len(currSlice) < service.batchSize {
       currSlice = append(currSlice, AppointmentFromApiInput(inApp))
     } else {
-      err = service.insertBatch(ctx, service.repository, parentSpan, currSlice)
+
+      err = service.insertBatch(ctx, service.repository, currSlice)
       if err != nil {
         return out, err
       }
@@ -248,15 +247,14 @@ func (service *ServiceAPI) MultiCreateAppointmentsV1(ctx context.Context, req *d
   }
 
   if len(currSlice) > 0 {
-    err = service.insertBatch(ctx, service.repository, parentSpan, currSlice)
+    err = service.insertBatch(ctx, service.repository, currSlice)
   }
 
   return out, err
 }
 
-func (service *ServiceAPI) insertBatch(ctx context.Context, repository Repo, parentSpan opentracing.Span, entities []recording.Appointment) error {
-  tracer := opentracing.GlobalTracer()
-  childSpan := tracer.StartSpan("Batch", opentracing.ChildOf(parentSpan.Context()))
+func (service *ServiceAPI) insertBatch(ctx context.Context, repository Repo, entities []recording.Appointment) error {
+  childSpan, ctx := opentracing.StartSpanFromContext(ctx, "Batch")
   childSpan.LogFields(opLog.Int("batch size", len(entities)))
   defer childSpan.Finish()
   res, err := repository.AddEntities(ctx, entities)
@@ -281,6 +279,7 @@ func (service *ServiceAPI) DescribeAppointmentV1(ctx context.Context, req *desc.
   app, err := service.repository.DescribeEntity(ctx, req.AppointmentId)
   if err != nil {
     GetLogger(ctx).Errorf("cannot describe appointment: %s", err)
+    return nil, err
   }
 
   out := AppointmentToApiOutput(app)

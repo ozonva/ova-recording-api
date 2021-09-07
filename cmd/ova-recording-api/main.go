@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	_ "github.com/jackc/pgx/stdlib"
@@ -15,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"io"
 	"net"
 	"net/http"
@@ -158,6 +160,8 @@ func runClient() {
 
 	a := desc.InAppointmentV1{Name: "Some hello name"}
 	for i := 0; i < 100; i++ {
+		a.StartTime = timestamppb.New(time.Now())
+		a.EndTime = timestamppb.New(time.Now())
 		_, err = client.CreateAppointmentV1(ctx, &desc.CreateAppointmentV1Request{Appointment: &a})
 		if err != nil {
 			log.Errorf("cannot create appointment: %s", err)
@@ -174,6 +178,23 @@ func runClient() {
 		if err != nil {
 			log.Infof("cannot update entity %d", i)
 		}
+
+		_, err = client.MultiCreateAppointmentsV1(ctx,
+			&desc.MultiCreateAppointmentsV1Request{
+			Appointments: []*desc.InAppointmentV1{
+				{Name: fmt.Sprintf("ONE multi name %d", i), StartTime: timestamppb.New(time.Now())},
+				{Name: fmt.Sprintf("TWO multi name %d", i), StartTime: timestamppb.New(time.Now())},
+				{Name: fmt.Sprintf("THREE multi name %d", i), StartTime: timestamppb.New(time.Now())},
+			}})
+		if err != nil {
+			log.Infof("cannot multi create entity %d", i)
+		}
+
+		_, err = client.DescribeAppointmentV1(ctx, &desc.DescribeAppointmentV1Request{AppointmentId: 0})
+		if err != nil {
+			log.Infof("Expected error in describe call: %s", err)
+		}
+
 		time.Sleep(time.Second*5)
 	}
 

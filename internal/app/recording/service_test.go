@@ -83,10 +83,7 @@ var _ = Describe("Service", func() {
 				StartTime: time.Now().UTC(),
 				EndTime: time.Now().UTC(),
 			}
-			someRepo.EXPECT().UpdateEntity(gomock.Any(),
-				entity.AppointmentID, entity.UserID,
-				entity.Name, entity.Description,
-				entity.StartTime, entity.EndTime).Return(nil).Times(1)
+			someRepo.EXPECT().UpdateEntity(gomock.Any(), entity).Return(nil).Times(1)
 			kfkClient.EXPECT().Name().Return("test").Times(1)
 			kfkClient.EXPECT().SendMessage(gomock.Any()).Return(nil).Times(1)
 			someMetrics.EXPECT().IncSuccessUpdateAppointmentCounter().Times(1)

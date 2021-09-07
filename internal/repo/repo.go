@@ -7,18 +7,11 @@ import (
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 	log "github.com/sirupsen/logrus"
 	"sync"
-	"time"
 )
 
 type Repo interface {
 	AddEntities(ctx context.Context, entities []recording.Appointment) ([]uint64, error)
-	UpdateEntity(ctx context.Context,
-				entityId uint64,
-				userId uint64,
-				name string,
-				description string,
-				startTime time.Time,
-				endTime time.Time) error
+	UpdateEntity(ctx context.Context, app recording.Appointment) error
     ListEntities(ctx context.Context, limit, offset uint64) ([]recording.Appointment, error)
     DescribeEntity(ctx context.Context, entityId uint64) (*recording.Appointment, error)
 	RemoveEntity(ctx context.Context, entityId uint64) error
@@ -65,6 +58,12 @@ func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment
 		out = append(out, currId)
 	}
 
+	err = res.Err()
+	if err != nil {
+		log.Warnf("Query returned error: %s", err)
+		return nil, err
+	}
+
 	err = res.Close()
 	if err != nil {
 		log.Warnf("cannot close result set: %s", err)
@@ -78,33 +77,27 @@ func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment
 	return out, nil
 }
 
-func (r *repo) UpdateEntity(ctx context.Context,
-				entityId uint64,
-				userId uint64,
-				name string,
-				description string,
-				startTime time.Time,
-				endTime time.Time) error {
+func (r *repo) UpdateEntity(ctx context.Context, app recording.Appointment) error {
 	ub := sqlbuilder.PostgreSQL.NewUpdateBuilder()
 	ub.Update("appointments")
 
-	if userId > 0 {
-		ub.Set(ub.Assign("user_id", userId))
+	if app.UserID > 0 {
+		ub.Set(ub.Assign("user_id", app.UserID))
 	}
-	if len(name) > 0 {
-		ub.SetMore(ub.Assign("name", name))
+	if len(app.Name) > 0 {
+		ub.SetMore(ub.Assign("name", app.Name))
 	}
-	if len(description) > 0 {
-		ub.SetMore(ub.Assign("description", description))
+	if len(app.Description) > 0 {
+		ub.SetMore(ub.Assign("description", app.Description))
 	}
-	if !startTime.IsZero() {
-		ub.SetMore(ub.Assign("start_time", startTime))
+	if !app.StartTime.IsZero() {
+		ub.SetMore(ub.Assign("start_time", app.StartTime))
 	}
-	if !endTime.IsZero() {
-		ub.SetMore(ub.Assign("end_time", endTime))
+	if !app.EndTime.IsZero() {
+		ub.SetMore(ub.Assign("end_time", app.EndTime))
 	}
 
-	ub.Where(ub.Equal("appointment_id", entityId))
+	ub.Where(ub.Equal("appointment_id", app.AppointmentID))
 
 	sql, args := ub.Build()
 
@@ -188,16 +181,8 @@ func (r *dummyRepo) AddEntities(ctx context.Context, entities []recording.Appoin
 	return nil, nil
 }
 
-func (r *dummyRepo) UpdateEntity(ctx context.Context,
-				entityId uint64,
-				userId uint64,
-				name string,
-				description string,
-				startTime time.Time,
-				endTime time.Time) error {
-	log.Infof("dummyRepo: UpdateEntity(%d, %d, %s, %s, %v, %v",
-		entityId, userId, name, description, startTime, endTime)
-
+func (r *dummyRepo) UpdateEntity(ctx context.Context, app recording.Appointment) error {
+	log.Infof("dummyRepo: UpdateEntity(%v)", app)
 	return nil
 }
 
