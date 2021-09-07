@@ -43,7 +43,7 @@ func (f *flusher) Flush (entities []recording.Appointment) []recording.Appointme
 	currIndex := 0
 
 	for _, batch := range batches {
-		err = f.entityRepo.AddEntities(context.Background(), batch)
+		_, err = f.entityRepo.AddEntities(context.Background(), batch)
 		if err != nil {
 			log.Errorf("Cannot save to repo: %s\n", err)
 			return entities[currIndex:]

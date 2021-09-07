@@ -4,3 +4,6 @@ database:
   database: appointments
   user: recording_user
   password: recording_password
+chunkSize: 50
+capacity: 100
+saveIntervalSec: 5

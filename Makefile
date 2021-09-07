@@ -13,11 +13,7 @@ run: ./cmd/ova-recording-api/main.go
 
 .PHONY: test
 test:
-	go test -v ./internal/utils/*.go
-	go test -v ./internal/app/recording/*.go
-	go test -v ./internal/flusher/*.go
-	go test -v ./internal/repo/*.go
-	go test -v ./internal/saver/*.go
+	go test ./... -v -count=1
 
 .PHONY: lint
 lint:
@@ -37,11 +33,19 @@ bin-deps:
 
 
 GENERATED_API := $(wildcard ./pkg/recording/api/*.go)
-$(GENERATED_API): api/api.proto
+$(GENERATED_API): api/api.proto api/kafka.proto
 	protoc -I=./ --go_out=./pkg/recording --go-grpc_out=./pkg/recording ./api/api.proto
+	protoc -I=./ --go_out=./pkg/recording ./api/kafka.proto
 
 GENERATED_MOCKS := ./internal/repo/mock/mock_repo.go
 $(GENERATED_MOCKS): ./internal/repo/repo.go
 	mockgen -source ./internal/repo/repo.go -destination $(GENERATED_MOCKS)
 
-generate: $(GENERATED_API) $(GENERATED_MOCKS)
+GENERATED_MOCKS_KFK := ./internal/kafka_client/mock/mock_kafka_client.go
+$(GENERATED_MOCKS_KFK): ./internal/kafka_client/kafka_client.go
+	mockgen -source ./internal/kafka_client/kafka_client.go -destination $(GENERATED_MOCKS_KFK)
+
+GENERATED_MOCKS_METRICS := ./internal/app/metrics/mock/mock_metrics.go
+$(GENERATED_MOCKS_METRICS): ./internal/app/metrics/metrics.go
+	mockgen -source ./internal/app/metrics/metrics.go -destination $(GENERATED_MOCKS_METRICS)
+generate: $(GENERATED_API) $(GENERATED_MOCKS) $(GENERATED_MOCKS_KFK) $(GENERATED_MOCKS_METRICS)

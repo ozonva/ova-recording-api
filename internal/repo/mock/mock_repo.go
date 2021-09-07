@@ -36,11 +36,12 @@ func (m *MockRepo) EXPECT() *MockRepoMockRecorder {
 }
 
 // AddEntities mocks base method.
-func (m *MockRepo) AddEntities(ctx context.Context, entities []recording.Appointment) error {
+func (m *MockRepo) AddEntities(ctx context.Context, entities []recording.Appointment) ([]uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddEntities", ctx, entities)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // AddEntities indicates an expected call of AddEntities.
@@ -105,4 +106,18 @@ func (m *MockRepo) RemoveEntity(ctx context.Context, entityId uint64) error {
 func (mr *MockRepoMockRecorder) RemoveEntity(ctx, entityId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveEntity", reflect.TypeOf((*MockRepo)(nil).RemoveEntity), ctx, entityId)
+}
+
+// UpdateEntity mocks base method.
+func (m *MockRepo) UpdateEntity(ctx context.Context, app recording.Appointment) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateEntity", ctx, app)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEntity indicates an expected call of UpdateEntity.
+func (mr *MockRepoMockRecorder) UpdateEntity(ctx, app interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEntity", reflect.TypeOf((*MockRepo)(nil).UpdateEntity), ctx, app)
 }

@@ -64,8 +64,8 @@ var _ = Describe("Saver", func() {
 	Describe("Basic saving entries", func() {
 		Context("Usual case", func() {
 			It("should save all", func() {
-				someRepo.EXPECT().AddEntities(ctx, entities[:2]).Return(nil).Times(1)
-				someRepo.EXPECT().AddEntities(ctx, entities[2:]).Return(nil).Times(1)
+				someRepo.EXPECT().AddEntities(ctx, entities[:2]).Return([]uint64{1,2}, nil).Times(1)
+				someRepo.EXPECT().AddEntities(ctx, entities[2:]).Return([]uint64{1,2}, nil).Times(1)
 				someRepo.EXPECT().GetAddedCount(ctx).Return(4).Times(1)
 				for _, entity := range entities {
 					err := someSaver.Save(entity)

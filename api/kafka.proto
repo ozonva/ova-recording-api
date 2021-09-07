@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package ova.recording.api;
+
+option go_package = "./kafka";
+
+message KafkaMessage {
+  enum Kind {
+    UNKNOWN = 0;
+    CREATED = 1;
+    UPDATED = 2;
+    DELETED = 3;
+  }
+  Kind kind = 1;
+  string producer = 2;
+  oneof body {
+    AppointmentCreatedV1 created = 3;
+    AppointmentUpdatedV1 updated = 4;
+    AppointmentDeletedV1 deleted = 5;
+  }
+}
+
+message AppointmentCreatedV1 {
+  uint64 appointment_id = 1;
+}
+
+message AppointmentUpdatedV1 {
+  uint64 appointment_id = 1;
+}
+
+message AppointmentDeletedV1 {
+  uint64 appointment_id = 1;
+}

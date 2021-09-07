@@ -5,11 +5,16 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/opentracing/opentracing-go"
+	mock_metrics "github.com/ozonva/ova-recording-api/internal/app/metrics/mock"
 	api "github.com/ozonva/ova-recording-api/internal/app/recording"
+	mock_kafka_client "github.com/ozonva/ova-recording-api/internal/kafka_client/mock"
 	mock_repo "github.com/ozonva/ova-recording-api/internal/repo/mock"
 	"github.com/ozonva/ova-recording-api/pkg/recording"
 	desc "github.com/ozonva/ova-recording-api/pkg/recording/api"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"io"
 	"time"
 )
 
@@ -18,15 +23,32 @@ var _ = Describe("Service", func() {
 		ctrl *gomock.Controller
 		someRepo *mock_repo.MockRepo
 		srv desc.RecordingServiceServer
+		ctx context.Context
+		tracingCloser io.Closer
+		span opentracing.Span
+		kfkClient *mock_kafka_client.MockClient
+		someMetrics *mock_metrics.MockMetrics
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		someRepo = mock_repo.NewMockRepo(ctrl)
-		srv = api.NewRecordingServiceAPI(someRepo)
+		kfkClient = mock_kafka_client.NewMockClient(ctrl)
+		someMetrics = mock_metrics.NewMockMetrics(ctrl)
+		srv = api.NewRecordingServiceAPI(someRepo, 10, kfkClient, someMetrics)
+		ctx = api.AddValue(context.Background(), "test", 1)
+		tracingCloser = api.SetupTracing()
+		tracer := opentracing.GlobalTracer()
+		span = tracer.StartSpan("TEST")
+		ctx = context.WithValue(ctx, api.SpanKey, span)
 	})
 
 	AfterEach(func() {
+		span.Finish()
+		err := tracingCloser.Close()
+		if err != nil {
+			log.Errorf("Cannot close tracing %s", err)
+		}
 		ctrl.Finish()
 	})
 
@@ -37,13 +59,64 @@ var _ = Describe("Service", func() {
 				StartTime: time.Now().UTC(),
 				EndTime: time.Now().UTC(),
 			}
-			someRepo.EXPECT().AddEntities(gomock.Any(), []recording.Appointment{entity}).Return(nil).Times(1)
-
-			_, err := srv.CreateAppointmentV1(context.Background(), &desc.CreateAppointmentV1Request{
+			someRepo.EXPECT().AddEntities(gomock.Any(), []recording.Appointment{entity}).Return([]uint64{1}, nil).Times(1)
+			kfkClient.EXPECT().Name().Return("test").Times(1)
+			kfkClient.EXPECT().SendMessage(gomock.Any()).Return(nil).Times(1)
+			someMetrics.EXPECT().IncSuccessCreateAppointmentCounter().Times(1)
+			_, err := srv.CreateAppointmentV1(ctx, &desc.CreateAppointmentV1Request{
 				Appointment: &desc.InAppointmentV1{
 					UserId: entity.UserID,
 					StartTime: timestamppb.New(entity.StartTime),
 					EndTime: timestamppb.New(entity.EndTime),
+				},
+			})
+
+			Expect(err).To(BeNil())
+		})
+
+		It("update", func() {
+			entity := recording.Appointment{
+				AppointmentID: 1,
+				UserID: 1,
+				Name: "name",
+				Description: "desc",
+				StartTime: time.Now().UTC(),
+				EndTime: time.Now().UTC(),
+			}
+			someRepo.EXPECT().UpdateEntity(gomock.Any(), entity).Return(nil).Times(1)
+			kfkClient.EXPECT().Name().Return("test").Times(1)
+			kfkClient.EXPECT().SendMessage(gomock.Any()).Return(nil).Times(1)
+			someMetrics.EXPECT().IncSuccessUpdateAppointmentCounter().Times(1)
+
+			_, err := srv.UpdateAppointmentV1(ctx, &desc.UpdateAppointmentV1Request{
+				Appointment: api.AppointmentToApiOutput(&entity),
+			})
+
+			Expect(err).To(BeNil())
+		})
+
+		It("multi create", func() {
+			entities := []recording.Appointment{
+				{
+					UserID:    1,
+					StartTime: time.Now().UTC(),
+					EndTime:   time.Now().UTC(),
+				},
+				{
+					UserID:    2,
+					StartTime: time.Now().UTC(),
+					EndTime:   time.Now().UTC(),
+				},
+			}
+			someRepo.EXPECT().AddEntities(gomock.Any(), entities).Return([]uint64{1, 2}, nil).Times(1)
+			kfkClient.EXPECT().Name().Return("test").Times(2)
+			kfkClient.EXPECT().SendMessage(gomock.Any()).Return(nil).Times(2)
+			someMetrics.EXPECT().IncSuccessMultiCreateAppointmentCounter().Times(1)
+
+			_, err := srv.MultiCreateAppointmentsV1(ctx, &desc.MultiCreateAppointmentsV1Request{
+				Appointments: []*desc.InAppointmentV1{
+					api.AppointmentToApiInput(&entities[0]),
+					api.AppointmentToApiInput(&entities[1]),
 				},
 			})
 
@@ -59,7 +132,7 @@ var _ = Describe("Service", func() {
 			}
 			someRepo.EXPECT().DescribeEntity(gomock.Any(), entity.AppointmentID).Return(&entity, nil).Times(1)
 
-			resp, err := srv.DescribeAppointmentV1(context.Background(), &desc.DescribeAppointmentV1Request{
+			resp, err := srv.DescribeAppointmentV1(ctx, &desc.DescribeAppointmentV1Request{
 				AppointmentId: entity.AppointmentID,
 			})
 
@@ -84,7 +157,7 @@ var _ = Describe("Service", func() {
 			}
 			someRepo.EXPECT().ListEntities(gomock.Any(), uint64(1), uint64(0)).Return([]recording.Appointment{entity}, nil).Times(1)
 
-			resp, err := srv.ListAppointmentsV1(context.Background(), &desc.ListAppointmentsV1Request{
+			resp, err := srv.ListAppointmentsV1(ctx, &desc.ListAppointmentsV1Request{
 				Offset: 0, Limit: 1,
 			})
 
@@ -98,11 +171,14 @@ var _ = Describe("Service", func() {
 			Expect(resp.Appointments[0].EndTime).To(Equal(timestamppb.New(entity.EndTime)))
 		})
 
-		It("remote", func() {
+		It("remove", func() {
 
 			someRepo.EXPECT().RemoveEntity(gomock.Any(), uint64(1)).Return(nil).Times(1)
+			kfkClient.EXPECT().Name().Return("test").Times(1)
+			kfkClient.EXPECT().SendMessage(gomock.Any()).Return(nil).Times(1)
+			someMetrics.EXPECT().IncSuccessRemoveAppointmentCounter().Times(1)
 
-			_, err := srv.RemoveAppointmentV1(context.Background(), &desc.RemoveAppointmentV1Request{
+			_, err := srv.RemoveAppointmentV1(ctx, &desc.RemoveAppointmentV1Request{
 				AppointmentId: 1,
 			})
 

@@ -10,7 +10,8 @@ import (
 )
 
 type Repo interface {
-	AddEntities(ctx context.Context, entities []recording.Appointment) error
+	AddEntities(ctx context.Context, entities []recording.Appointment) ([]uint64, error)
+	UpdateEntity(ctx context.Context, app recording.Appointment) error
     ListEntities(ctx context.Context, limit, offset uint64) ([]recording.Appointment, error)
     DescribeEntity(ctx context.Context, entityId uint64) (*recording.Appointment, error)
 	RemoveEntity(ctx context.Context, entityId uint64) error
@@ -31,7 +32,7 @@ type repo struct {
 	m sync.Mutex
 }
 
-func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment) error {
+func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment) (out []uint64, err error) {
 	ib := sqlbuilder.PostgreSQL.NewInsertBuilder()
 	ib.InsertInto("appointments")
 	ib.Cols("user_id", "name", "description", "start_time", "end_time")
@@ -40,22 +41,68 @@ func (r *repo) AddEntities(ctx context.Context, entities []recording.Appointment
 	}
 	sql, args := ib.Build()
 
-	res, err := r.db.ExecContext(ctx, sql, args...)
+	sql = sql + "RETURNING appointment_id"
+
+	res, err := r.db.QueryContext(ctx, sql, args...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	addedCount, err := res.RowsAffected()
+	for res.Next() {
+		var currId uint64
+		err = res.Scan(&currId)
+		if err != nil {
+			log.Warnf("cannot get returned id: %s", err)
+			return nil, nil
+		}
+		out = append(out, currId)
+	}
+
+	err = res.Err()
 	if err != nil {
-		log.Warnf("cannot get affected rows: %s", err)
-		return nil
+		log.Warnf("Query returned error: %s", err)
+		return nil, err
+	}
+
+	err = res.Close()
+	if err != nil {
+		log.Warnf("cannot close result set: %s", err)
+		return nil, nil
 	}
 
 	r.m.Lock()
-	r.addedCount += int(addedCount)
+	r.addedCount += len(out)
 	r.m.Unlock()
 
-	return nil
+	return out, nil
+}
+
+func (r *repo) UpdateEntity(ctx context.Context, app recording.Appointment) error {
+	ub := sqlbuilder.PostgreSQL.NewUpdateBuilder()
+	ub.Update("appointments")
+
+	if app.UserID > 0 {
+		ub.Set(ub.Assign("user_id", app.UserID))
+	}
+	if len(app.Name) > 0 {
+		ub.SetMore(ub.Assign("name", app.Name))
+	}
+	if len(app.Description) > 0 {
+		ub.SetMore(ub.Assign("description", app.Description))
+	}
+	if !app.StartTime.IsZero() {
+		ub.SetMore(ub.Assign("start_time", app.StartTime))
+	}
+	if !app.EndTime.IsZero() {
+		ub.SetMore(ub.Assign("end_time", app.EndTime))
+	}
+
+	ub.Where(ub.Equal("appointment_id", app.AppointmentID))
+
+	sql, args := ub.Build()
+
+	_, err := r.db.ExecContext(ctx, sql, args...)
+	return err
 }
 
 func (r *repo) ListEntities(ctx context.Context, limit, offset uint64) ([]recording.Appointment, error) {
@@ -123,7 +170,7 @@ type dummyRepo struct {
 	m sync.Mutex
 }
 
-func (r *dummyRepo) AddEntities(ctx context.Context, entities []recording.Appointment) error {
+func (r *dummyRepo) AddEntities(ctx context.Context, entities []recording.Appointment) ([]uint64, error) {
 	r.m.Lock()
 	defer r.m.Unlock()
 	r.addedCount += len(entities)
@@ -131,6 +178,11 @@ func (r *dummyRepo) AddEntities(ctx context.Context, entities []recording.Appoin
 		log.Infof("dummyRepo: Add entity %s\n", entity)
 
 	}
+	return nil, nil
+}
+
+func (r *dummyRepo) UpdateEntity(ctx context.Context, app recording.Appointment) error {
+	log.Infof("dummyRepo: UpdateEntity(%v)", app)
 	return nil
 }
 

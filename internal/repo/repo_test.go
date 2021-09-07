@@ -79,10 +79,33 @@ var _ = Describe("Repo", func() {
 	Context("general", func() {
 
 		It("Add entity", func() {
-			err := testRepo.AddEntities(
+			res, err := testRepo.AddEntities(
 				context.Background(),
 				[]recording.Appointment{additionalEntry})
 			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(res[0]).To(gomega.BeEquivalentTo(additionalEntry.AppointmentID))
+		})
+
+		It("Update entity", func() {
+			entityToUpdate := recording.Appointment{
+				AppointmentID: testData[0].AppointmentID,
+				UserID: 10,
+				Name: "UPDATED",
+				StartTime: time.Time{},
+				EndTime: time.Time{},
+			}
+
+			err := testRepo.UpdateEntity(context.Background(), entityToUpdate)
+			gomega.Expect(err).To(gomega.BeNil())
+
+			res, err := testRepo.DescribeEntity(context.Background(), entityToUpdate.AppointmentID)
+
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(res.UserID).To(gomega.BeEquivalentTo(entityToUpdate.UserID))
+			gomega.Expect(res.Name).To(gomega.BeEquivalentTo(entityToUpdate.Name))
+			gomega.Expect(res.Description).To(gomega.BeEquivalentTo(testData[0].Description))
+			gomega.Expect(res.StartTime).To(gomega.BeEquivalentTo(testData[0].StartTime))
+			gomega.Expect(res.EndTime).To(gomega.BeEquivalentTo(testData[0].EndTime))
 		})
 
 		It("Remove entity", func() {
@@ -93,7 +116,7 @@ var _ = Describe("Repo", func() {
 		})
 
 		It("List entities", func() {
-			err := testRepo.AddEntities(context.Background(), []recording.Appointment{additionalEntry})
+			_, err := testRepo.AddEntities(context.Background(), []recording.Appointment{additionalEntry})
 			gomega.Expect(err).To(gomega.BeNil())
 
 			res, err := testRepo.ListEntities(
