@@ -94,6 +94,7 @@ func run() error {
 	server = grpc.NewServer(
 		grpc.UnaryInterceptor(
 			middleware.ChainUnaryServer(
+				grpc_prometheus.UnaryServerInterceptor,
 				api.RequestIdInterceptor,
 				api.TracingInterceptor,
 			),

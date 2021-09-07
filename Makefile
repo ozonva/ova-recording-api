@@ -13,11 +13,7 @@ run: ./cmd/ova-recording-api/main.go
 
 .PHONY: test
 test:
-	go test -v ./internal/utils/*.go
-	go test -v ./internal/app/recording/*.go
-	go test -v ./internal/flusher/*.go
-	go test -v ./internal/repo/*.go
-	go test -v ./internal/saver/*.go
+	go test ./... -v -count=1
 
 .PHONY: lint
 lint:
